@@ -11,13 +11,17 @@ function as_array(user) {
         color : user.color
     };
 }
-
+/**
+ * check if user exists if it does send back username,
+ * if not, send back false to represent user does not exist
+ *
+ * @param socket    socket to client requesting login
+ * @param msg       username
+ */
 module.exports.login_request = function(socket, msg) {
-    Model.findOne({
-        where : {
-            username : msg
-        }
-    }).then(function(user) {
+    Model.findOne({where : {
+        username : msg
+    }}).then(function(user) {
         if (user) {
             socket.emit('login_response', msg);
         }
@@ -27,6 +31,15 @@ module.exports.login_request = function(socket, msg) {
     });
 }
 
+/**
+ * attempt to add user to database, will emit false through socket
+ * if user already exist in database. If user is created, send
+ * list of users to every client to update player list
+ *
+ * @param socket        socket to client requesting register
+ * @param io            sockets to all clients connected
+ * @param msg           username
+ */
 module.exports.register_request = function(socket, io, msg) {
     Model.findOne({where : {
         username : msg
@@ -49,6 +62,14 @@ module.exports.register_request = function(socket, io, msg) {
     })
 }
 
+/**
+ * update the position of a user depending on
+ * direction noted by msg
+ *
+ * @param io        sockets to all clients
+ * @param msg       associative array containing user requesting
+ *                  move and direction of move
+ */
 module.exports.move_request = function(io, msg) {
     Model.findOne({
         where : {username : msg['username']}
@@ -89,6 +110,12 @@ module.exports.move_request = function(io, msg) {
     });
 }
 
+/**
+ * update client or clients by sending list of
+ * all players
+ *
+ * @param socket        socket to client/clients
+ */
 module.exports.update_client = function(socket) {
     var response = [];
     Model.findAll().then(function(users) {
