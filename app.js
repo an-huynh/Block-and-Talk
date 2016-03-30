@@ -2,7 +2,7 @@ var express = require('express');
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
-var controller = require(__dirname + '/bin/controller.js');
+var controller = require(__dirname + '/src/controller.js');
 
 app.use(express.static('static'));
 
