@@ -1,0 +1,32 @@
+body {
+    font-size: 20px;
+    padding: 0px;
+    margin: 0px;
+    font-family : "Comic Sans MS";
+    color: white;
+    background-color: rgb(40,20,40);
+}
+
+header {
+    height: 70px;
+    line-height: 70px;
+    text-align: center;
+    color: #FFFFFF;
+    font-size: 3em;
+    background-color: #FF7256;
+}
+
+#game {
+    width: 720px;
+    margin: 0 auto;
+    margin-top: 20px;
+    top: 20px;
+}
+
+#myCanvas {
+    background-color: rgb(195,238,238);
+}
+
+#chat_box {
+  visibility: hidden;
+}

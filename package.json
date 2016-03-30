@@ -1,0 +1,27 @@
+{
+  "name": "Block-and-Talk",
+  "version": "0.0.0",
+  "description": "",
+  "main": "app.js",
+  "bin": {
+    "Block-and-Talk": "controller.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/an-huynh/Block-and-Talk.git"
+  },
+  "author": "",
+  "license": "BSD-2-Clause",
+  "bugs": {
+    "url": "https://github.com/an-huynh/Block-and-Talk/issues"
+  },
+  "dependencies": {
+    "express": "~4.13.4",
+    "sequelize": "~3.20.0",
+    "sqlite3": "~3.1.2",
+    "socket.io": "~1.4.5"
+  }
+}
