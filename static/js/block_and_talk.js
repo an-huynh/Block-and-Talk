@@ -18,15 +18,31 @@ window.onload = function() {
 
 function socketInit() {
     socket = io();
-    update_request();
     socket.on('login_response', function(msg) {
-        username = msg;
-        element('login').onsubmit = function() {return false;};
+        // TEMPORARY
+        if (msg) {
+            console.log('login');
+            element('login').onsubmit = function(){return false;};
+            element('username').value = '';
+            window.onkeydown = keyHandler;
+            element('login_box').style.display = 'none';
+            username = msg;
+            update_request();
+        }
+        else {
+            socket.emit('register_request', element('username').value);
+        }
+    });
+    socket.on('register_response', function(msg) {
+        // TEMPORARY
+        console.log('reg');
+        console.log(msg);
+        element('login').onsubmit = function(){return false;};
         element('username').value = '';
         window.onkeydown = keyHandler;
-        update_request();
         element('login_box').style.display = 'none';
-        element('chatbox').style.visibility = 'visible';
+        username = msg;
+        update_request();
     });
     socket.on('move_response', function(msg) {
         for(var found = false, i = 0; i < players.length; i++) {
@@ -87,7 +103,7 @@ function drawCycle() {
     for (var i = 0; i < players.length; i++) {
         ctx.beginPath();
         ctx.rect(players[i]['posx'] * 2, players[i]['posy'] * 2, 20, 20);
-        ctx.fillStyle = '#' + players[i]['color'];
+        ctx.fillStyle = players[i]['color'];
         ctx.fill();
         ctx.closePath();
     }

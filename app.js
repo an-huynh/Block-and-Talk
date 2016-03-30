@@ -13,8 +13,11 @@ app.get('/', function(req, res) {
 io.on('connection', function(socket) {
     console.log('A user has connected');
     socket.on('login_request', function(msg) {
-        controller.login_request(socket, io, msg);
+        controller.login_request(socket, msg);
     });
+    socket.on('register_request', function(msg) {
+        controller.register_request(socket, io, msg);
+    })
     socket.on('move_request', function(msg) {
         controller.move_request(io, msg);
     });
