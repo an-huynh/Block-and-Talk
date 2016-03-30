@@ -12,23 +12,42 @@ function as_array(user) {
     };
 }
 
-module.exports.login_request = function(socket, io, msg) {
-    console.log(msg);
-    Model.findOrCreate({
+module.exports.login_request = function(socket, msg) {
+    Model.findOne({
         where : {
             username : msg
-        },
-        defaults : {
-            username : msg,
-            posx : 0,
-            posy : 0,
-            color : '475893'
         }
-    }).then(function() {
-        socket.emit('login_response', msg);
-        module.exports.update_client(io);
+    }).then(function(user) {
+        if (user) {
+            socket.emit('login_response', msg);
+        }
+        else {
+            socket.emit('login_response', false);
+        }
     });
-};
+}
+
+module.exports.register_request = function(socket, io, msg) {
+    Model.findOne({where : {
+        username : msg
+    }}).then(function(user) {
+        if (!user) {
+            Model.create({
+                username : msg,
+                posx : 0,
+                posy : 0,
+                color: '#475893'
+            }).then(function(user) {
+                user.save();
+                socket.emit('register_response', user.username);
+                module.exports.update_client(io);
+            })
+        }
+        else {
+            socket.emit('register_response', false);
+        }
+    })
+}
 
 module.exports.move_request = function(io, msg) {
     Model.findOne({
@@ -79,4 +98,3 @@ module.exports.update_client = function(socket) {
         socket.emit('update_response', response);
     });
 }
-
