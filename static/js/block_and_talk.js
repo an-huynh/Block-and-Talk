@@ -26,8 +26,13 @@ function socketInit() {
             element('username').value = '';
             window.onkeydown = keyHandler;
             element('login_box').style.display = 'none';
+            element('chat_box').style.display = 'block';
+            element('message-form').style.display = 'block';
             username = msg;
             update_request();
+            element('message-form').onsubmit = messageEntered;
+            element('message-input').onfocus = typing;
+            element('message-input').onblur = stoppedTyping;
         }
         else {
             socket.emit('register_request', element('username').value);
@@ -41,8 +46,13 @@ function socketInit() {
         element('username').value = '';
         window.onkeydown = keyHandler;
         element('login_box').style.display = 'none';
+        element('chat_box').style.display = 'block';
+        element('message-form').style.display = 'block';
         username = msg;
         update_request();
+        element('message-form').onsubmit = messageEntered;
+        element('message-input').onfocus = typing;
+        element('message-input').onblur = stoppedTyping;
     });
     socket.on('move_response', function(msg) {
         for(var found = false, i = 0; i < players.length; i++) {
@@ -55,6 +65,13 @@ function socketInit() {
     socket.on('update_response', function(msg) {
         players = msg;
         drawCycle();
+    });
+    socket.on('chat_message', function(msg) {
+        var new_message = element('message-template').content.cloneNode(true);
+        new_message.querySelector('.message-username').textContent = msg['username'];
+        new_message.querySelector('.message-content').textContent = msg['message'];
+        element('messages').appendChild(new_message);
+        element('chat_box').scrollTop = element('chat_box').scrollHeight;
     });
 }
 
@@ -107,4 +124,22 @@ function drawCycle() {
         ctx.fill();
         ctx.closePath();
     }
+}
+
+function messageEntered() {
+    var request = {
+        username : username,
+        message : element('message-input').value
+    };
+    socket.emit('message_request', request);
+    element('message-input').value = '';
+    return false;
+}
+
+function typing() {
+    window.onkeydown = null;
+}
+
+function stoppedTyping() {
+    window.onkeydown = keyHandler;
 }

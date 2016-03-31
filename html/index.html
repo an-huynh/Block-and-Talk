@@ -7,16 +7,28 @@
     <script src='js/block_and_talk.js'></script>
 </head>
 <body>
-  <header>Block and Talk</header>
+    <header>Block and Talk</header>
     <div id="game">
         <canvas id="myCanvas" width="720" height="480"></canvas>
         <div id="login_box">
-        <form id="login">
-            Username&nbsp;<input type="text" id="username">
-            <input type="submit" value="submit">
-        </form>
+            <form id="login">
+                Username&nbsp;<input type="text" id="username">
+                <input type="submit" value="submit">
+            </form>
         </div>
+        <div id="chat_box">
+            <ul id='messages'></ul>
+        </div>
+        <form id='message-form'>
+            <button id='message-send'>SEND</button>
+            <input type='text' id='message-input'>
+        </form>
     </div>
-    <div id="chat_box"></div>
 </body>
+<template id='message-template'>
+    <span class='message-wrapper'>
+        <section class='message-username'></section>
+        <article class='message-content'></article>
+    </span>
+</template>
 </html>

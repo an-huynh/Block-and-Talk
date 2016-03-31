@@ -23,7 +23,10 @@ io.on('connection', function(socket) {
     });
     socket.on('update_client_request', function(msg) {
         controller.update_client(socket);
-    })
+    });
+    socket.on('message_request', function(msg) {
+        controller.message_request(io, msg);
+    });
 })
 
 

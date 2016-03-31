@@ -125,3 +125,10 @@ module.exports.update_client = function(socket) {
         socket.emit('update_response', response);
     });
 }
+
+module.exports.message_request = function(io, msg) {
+    console.log('helo');
+    if (msg['message'] !== '') {
+        io.emit('chat_message', msg);
+    }
+}
