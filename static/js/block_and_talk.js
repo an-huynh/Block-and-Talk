@@ -10,8 +10,7 @@ var ctx;
 window.onload = function() {
     canvas = element('myCanvas');
     ctx = canvas.getContext('2d')
-
-
+    loginScreen();
     socketInit();
     element('login').onsubmit = login_request;
 }
@@ -21,7 +20,6 @@ function socketInit() {
     socket.on('login_response', function(msg) {
         // TEMPORARY
         if (msg) {
-            console.log('login');
             element('login').onsubmit = function(){return false;};
             element('username').value = '';
             window.onkeydown = keyHandler;
@@ -40,8 +38,6 @@ function socketInit() {
     });
     socket.on('register_response', function(msg) {
         // TEMPORARY
-        console.log('reg');
-        console.log(msg);
         element('login').onsubmit = function(){return false;};
         element('username').value = '';
         window.onkeydown = keyHandler;
@@ -70,6 +66,9 @@ function socketInit() {
         var new_message = element('message-template').content.cloneNode(true);
         new_message.querySelector('.message-username').textContent = msg['username'];
         new_message.querySelector('.message-content').textContent = msg['message'];
+
+        blockMessage(msg['username'], msg['message']);
+
         element('messages').appendChild(new_message);
         element('chat_box').scrollTop = element('chat_box').scrollHeight;
     });
@@ -85,7 +84,6 @@ function login_request() {
 }
 
 function move_request(dir) {
-    console.log('requesting');
     var request = {
         username : username,
         direction : dir
@@ -98,17 +96,20 @@ function update_request() {
 }
 
 function keyHandler(evt) {
-    console.log(evt.keyCode);
     switch(evt.keyCode) {
+        case 38:
         case 87:
             move_request('up');
             break;
+        case 37:
         case 65:
             move_request('left');
             break;
+        case 39:
         case 68:
             move_request('right');
             break;
+        case 40:
         case 83:
             move_request('down');
             break;
@@ -142,4 +143,53 @@ function typing() {
 
 function stoppedTyping() {
     window.onkeydown = keyHandler;
+}
+
+function blockMessage(username, message) {
+    var index;
+    var found = false;
+    for(var i = 0; i < players.length && !found; i++) {
+        if (username === players[i]['username']) {
+            index = i;
+            found = true;
+        }
+    }
+    if (found) {
+        for(var i = 0; i < 10000; i += 1000 / 60) {
+            setTimeout(function() {
+                drawCycle();
+                console.log('printing');
+                ctx.textAlign = "center";
+                ctx.font="20px Helvetica";
+                ctx.fillText(message, players[index]['posx'] * 2 - 20, players[index]['posy'] * 2 - 20);
+            }, i);
+        }
+    }
+}
+
+function loginScreen() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.font = "55px Helvetica";
+    ctx.textAlign = "center";
+    ctx.fillText("Block and Talk", (canvas.width)/2, ((canvas.height)/2)-40);
+    
+    ctx.beginPath();
+    ctx.rect(270, 270, 75, 30);
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.closePath();
+    ctx.textAlign = "left";
+    ctx.fillStyle = "black";
+    ctx.font = "25px Helvetica";
+    ctx.fillText("Login", 274, 293);
+    
+    ctx.beginPath();
+    ctx.rect(370, 270, 105, 30);
+    ctx.fillStyle = "white";
+    ctx.fill();
+    ctx.closePath();
+    ctx.textAlign = "left";
+    ctx.fillStyle = "black";
+    ctx.font = "25px Helvetica";
+    ctx.fillText("Register", 374, 293);
 }

@@ -127,7 +127,6 @@ module.exports.update_client = function(socket) {
 }
 
 module.exports.message_request = function(io, msg) {
-    console.log('helo');
     if (msg['message'] !== '') {
         io.emit('chat_message', msg);
     }
