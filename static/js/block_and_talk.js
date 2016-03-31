@@ -1,11 +1,14 @@
 // GLOBALS
 var socket;
 var username;
+var messages = {};
 
 var players;
 
 var canvas;
 var ctx;
+
+var login = false;
 
 window.onload = function() {
     canvas = element('myCanvas');
@@ -27,10 +30,11 @@ function socketInit() {
             element('chat_box').style.display = 'block';
             element('message-form').style.display = 'block';
             username = msg;
-            update_request();
             element('message-form').onsubmit = messageEntered;
             element('message-input').onfocus = typing;
             element('message-input').onblur = stoppedTyping;
+            login = true;
+            update_request();
         }
         else {
             socket.emit('register_request', element('username').value);
@@ -45,32 +49,45 @@ function socketInit() {
         element('chat_box').style.display = 'block';
         element('message-form').style.display = 'block';
         username = msg;
-        update_request();
         element('message-form').onsubmit = messageEntered;
         element('message-input').onfocus = typing;
         element('message-input').onblur = stoppedTyping;
+        login = true;
+        update_request();
     });
     socket.on('move_response', function(msg) {
-        for(var found = false, i = 0; i < players.length; i++) {
-            if (msg['username'] === players[i]['username']) {
-                players[i] = msg;
+        if (login) {
+            for(var found = false, i = 0; i < players.length; i++) {
+                if (msg['username'] === players[i]['username']) {
+                    players[i] = msg;
+                }
             }
+                drawCycle();
         }
-        drawCycle();
     });
     socket.on('update_response', function(msg) {
         players = msg;
-        drawCycle();
+        if (login)
+            drawCycle();
     });
     socket.on('chat_message', function(msg) {
-        var new_message = element('message-template').content.cloneNode(true);
-        new_message.querySelector('.message-username').textContent = msg['username'];
-        new_message.querySelector('.message-content').textContent = msg['message'];
+        if (login) {
+            var new_message = element('message-template').content.cloneNode(true);
+            new_message.querySelector('.message-username').textContent = msg['username'];
+            new_message.querySelector('.message-content').textContent = msg['message'];
 
-        blockMessage(msg['username'], msg['message']);
+            var user = msg['username'];
+            if (!messages[user]) {
+                messages[user] = {};
+            }
+            messages[user]['message'] = msg['message'];
+            messages[user]['time'] = Math.floor(Date.now() / 1000);
 
-        element('messages').appendChild(new_message);
-        element('chat_box').scrollTop = element('chat_box').scrollHeight;
+            drawCycle();
+
+            element('messages').appendChild(new_message);
+            element('chat_box').scrollTop = element('chat_box').scrollHeight;
+        }
     });
 }
 
@@ -125,6 +142,24 @@ function drawCycle() {
         ctx.fill();
         ctx.closePath();
     }
+    for(var key in messages) {
+        if (messages[key]['time'] > Math.floor(Date.now() / 1000) - 10) {
+            var index;
+            var found = false;
+            for(var i = 0; i < players.length && !found; i++) {
+                if (key === players[i]['username']) {
+                    index = i;
+                    found = true;
+                }
+            }
+            if (found) {
+                ctx.font='20px Helvetica';
+                ctx.textAlign = 'center';
+                ctx.fillText(messages[key]['message'], players[index]['posx'] * 2 + 10, players[index]['posy'] * 2 - 10,
+                150);
+            }
+        }
+    }
 }
 
 function messageEntered() {
@@ -145,34 +180,12 @@ function stoppedTyping() {
     window.onkeydown = keyHandler;
 }
 
-function blockMessage(username, message) {
-    var index;
-    var found = false;
-    for(var i = 0; i < players.length && !found; i++) {
-        if (username === players[i]['username']) {
-            index = i;
-            found = true;
-        }
-    }
-    if (found) {
-        for(var i = 0; i < 10000; i += 1000 / 60) {
-            setTimeout(function() {
-                drawCycle();
-                console.log('printing');
-                ctx.textAlign = "center";
-                ctx.font="20px Helvetica";
-                ctx.fillText(message, players[index]['posx'] * 2 - 20, players[index]['posy'] * 2 - 20);
-            }, i);
-        }
-    }
-}
-
 function loginScreen() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.font = "55px Helvetica";
     ctx.textAlign = "center";
     ctx.fillText("Block and Talk", (canvas.width)/2, ((canvas.height)/2)-40);
-    
+
     ctx.beginPath();
     ctx.rect(270, 270, 75, 30);
     ctx.fillStyle = "white";
@@ -182,7 +195,7 @@ function loginScreen() {
     ctx.fillStyle = "black";
     ctx.font = "25px Helvetica";
     ctx.fillText("Login", 274, 293);
-    
+
     ctx.beginPath();
     ctx.rect(370, 270, 105, 30);
     ctx.fillStyle = "white";
