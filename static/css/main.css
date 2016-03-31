@@ -2,7 +2,7 @@ body {
     font-size: 20px;
     padding: 0px;
     margin: 0px;
-    font-family : "Helvetica";
+    font-family : "Comic Sans MS";
     color: white;
     background-color: rgb(40,20,40);
 }
@@ -84,6 +84,9 @@ input:focus {
 .message-wrapper {
     width : 100%;
     display: flex;
+    border-bottom-width: 1px;
+    border-bottom-color: black;
+    border-bottom-style: solid;
 }
 
 .message-username {
