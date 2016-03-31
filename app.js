@@ -19,9 +19,10 @@ io.on('connection', function(socket) {
         controller.register_request(socket, io, msg);
     })
     socket.on('move_request', function(msg) {
+        console.log('moving');
         controller.move_request(io, msg);
     });
-    socket.on('update_client_request', function(msg) {
+    socket.on('update_request', function(msg) {
         controller.update_client(socket);
     });
     socket.on('message_request', function(msg) {

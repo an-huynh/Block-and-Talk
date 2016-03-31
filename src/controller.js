@@ -71,6 +71,7 @@ module.exports.register_request = function(socket, io, msg) {
  *                  move and direction of move
  */
 module.exports.move_request = function(io, msg) {
+    console.log('test');
     Model.findOne({
         where : {username : msg['username']}
     }).then(function(user) {

@@ -1,190 +1,87 @@
 // GLOBALS
 var socket;
 var username;
-var messages = {};
-
 var players;
-
+var messages = {};
 var canvas;
 var ctx;
 
-var login = false;
-
 window.onload = function() {
     canvas = element('myCanvas');
-    ctx = canvas.getContext('2d')
+    ctx = canvas.getContext('2d');
     loginScreen();
-    socketInit();
-    element('login').onsubmit = login_request;
+    initSocket();
 }
 
-function socketInit() {
+function initSocket() {
     socket = io();
     socket.on('login_response', function(msg) {
-        // TEMPORARY
         if (msg) {
-            element('login').onsubmit = function(){return false;};
-            element('username').value = '';
-            window.onkeydown = keyHandler;
-            element('login_box').style.display = 'none';
-            element('chat_box').style.display = 'block';
-            element('message-form').style.display = 'block';
             username = msg;
-            element('message-form').onsubmit = messageEntered;
-            element('message-input').onfocus = typing;
-            element('message-input').onblur = stoppedTyping;
-            login = true;
-            update_request();
-        }
-        else {
-            socket.emit('register_request', element('username').value);
+            loggedIn();
         }
     });
     socket.on('register_response', function(msg) {
-        // TEMPORARY
-        element('login').onsubmit = function(){return false;};
-        element('username').value = '';
-        window.onkeydown = keyHandler;
-        element('login_box').style.display = 'none';
-        element('chat_box').style.display = 'block';
-        element('message-form').style.display = 'block';
-        username = msg;
-        element('message-form').onsubmit = messageEntered;
-        element('message-input').onfocus = typing;
-        element('message-input').onblur = stoppedTyping;
-        login = true;
-        update_request();
-    });
-    socket.on('move_response', function(msg) {
-        if (login) {
-            for(var found = false, i = 0; i < players.length; i++) {
-                if (msg['username'] === players[i]['username']) {
-                    players[i] = msg;
-                }
-            }
-                drawCycle();
+        if (msg) {
+            username = msg;
+            loggedIn();
         }
     });
+}
+
+function initSocketLoggedIn() {
+    socket.on('login_response', function(msg) {});
+    socket.on('register_response', function(msg) {});
     socket.on('update_response', function(msg) {
         players = msg;
-        if (login)
-            drawCycle();
+        drawCycle();
+    });
+    socket.on('move_response', function(msg) {
+        for (var found = false, i = 0; i < players.length && !found; i++) {
+            if (msg['username'] === players[i]['username']) {
+                players[i] = msg;
+            }
+        }
+        drawCycle();
     });
     socket.on('chat_message', function(msg) {
-        if (login) {
-            var new_message = element('message-template').content.cloneNode(true);
-            new_message.querySelector('.message-username').textContent = msg['username'];
-            new_message.querySelector('.message-content').textContent = msg['message'];
-
-            var user = msg['username'];
-            if (!messages[user]) {
-                messages[user] = {};
-            }
-            messages[user]['message'] = msg['message'];
-            messages[user]['time'] = Math.floor(Date.now() / 1000);
-
-            drawCycle();
-
-            element('messages').appendChild(new_message);
-            element('chat_box').scrollTop = element('chat_box').scrollHeight;
-        }
+        var newMessage = element('message-template').content.cloneNode(true);
+        newMessage.querySelector('.message-username').textContent = msg['username'];
+        newMessage.querySelector('.message-content').textContent = msg['message'];
+        element('messages').appendChild(newMessage);
+        element('chat-box').scrollTop = element('chat-box').scrollHeight;
+        var user = msg['username'];
+        if (!messages[user])
+            messages[user] = {};
+        messages[user]['message'] = msg['message'];
+        messages[user]['time'] = Date.now();
+        drawCycle();
     });
 }
 
-function element(id) {
-    return document.getElementById(id);
-}
-
-function login_request() {
-    socket.emit('login_request', element('username').value);
+function loginRequest() {
+    if (element('login-username').value !== '')
+        socket.emit('login_request', element('login-username').value);
     return false;
 }
 
-function move_request(dir) {
-    var request = {
-        username : username,
-        direction : dir
-    };
-    socket.emit('move_request', request);
-}
-
-function update_request() {
-    socket.emit('update_client_request', '');
-}
-
-function keyHandler(evt) {
-    switch(evt.keyCode) {
-        case 38:
-        case 87:
-            move_request('up');
-            break;
-        case 37:
-        case 65:
-            move_request('left');
-            break;
-        case 39:
-        case 68:
-            move_request('right');
-            break;
-        case 40:
-        case 83:
-            move_request('down');
-            break;
-    }
-}
-
-function drawCycle() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (var i = 0; i < players.length; i++) {
-        ctx.beginPath();
-        ctx.rect(players[i]['posx'] * 2, players[i]['posy'] * 2, 20, 20);
-        ctx.fillStyle = players[i]['color'];
-        ctx.fill();
-        ctx.closePath();
-    }
-    for(var key in messages) {
-        if (messages[key]['time'] > Math.floor(Date.now() / 1000) - 10) {
-            var index;
-            var found = false;
-            for(var i = 0; i < players.length && !found; i++) {
-                if (key === players[i]['username']) {
-                    index = i;
-                    found = true;
-                }
-            }
-            if (found) {
-                ctx.font='20px Helvetica';
-                ctx.textAlign = 'center';
-                ctx.fillText(messages[key]['message'], players[index]['posx'] * 2 + 10, players[index]['posy'] * 2 - 10,
-                150);
-            }
-        }
-    }
-}
-
-function messageEntered() {
-    var request = {
-        username : username,
-        message : element('message-input').value
-    };
-    socket.emit('message_request', request);
-    element('message-input').value = '';
-    return false;
-}
-
-function typing() {
-    window.onkeydown = null;
-}
-
-function stoppedTyping() {
+function loggedIn() {
+    element('login-box').style.display = 'none';
+    element('register-box').style.display = 'none';
+    element('chat-box').style.display = 'block';
+    element('message-form').style.display = 'block';
+    element('message-form').onsubmit = messageEntered;
+    element('message-input').onfocus = writing;
+    element('message-input').onblur = notWriting;
     window.onkeydown = keyHandler;
+    initSocketLoggedIn();
+    socket.emit('update_request', '');
 }
 
 function loginScreen() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.font = "55px Helvetica";
-    ctx.textAlign = "center";
-    ctx.fillText("Block and Talk", (canvas.width)/2, ((canvas.height)/2)-40);
+    ctx.font = '55px Helvetica';
+    ctx.textAlign = 'center';
+    ctx.fillText('Block and Talk', canvas.width / 2, canvas.height / 2 - 40);
 
     ctx.beginPath();
     ctx.rect(270, 270, 75, 30);
@@ -205,4 +102,98 @@ function loginScreen() {
     ctx.fillStyle = "black";
     ctx.font = "25px Helvetica";
     ctx.fillText("Register", 374, 293);
+
+    element('login').onsubmit = loginRequest;
+    document.addEventListener('mousedown', mouseDownHandler, false);
+}
+
+function moveRequest(dir) {
+    var message = {
+        username : username,
+        direction : dir
+    };
+    socket.emit('move_request', message);
+}
+
+function messageEntered() {
+    var message = {
+        username : username,
+        message : element('message-input').value
+    }
+    socket.emit('message_request', message);
+    element('message-input').value = '';
+    return false;
+}
+
+function element(id) {
+    return document.getElementById(id);
+}
+
+function writing() {
+    window.onkeydown = function() {};
+}
+
+function notWriting() {
+    window.onkeydown = keyHandler;
+}
+
+function keyHandler(evt) {
+    switch(evt.keyCode) {
+        case 38:
+        case 87:
+            moveRequest('up');
+            break;
+        case 37:
+        case 65:
+            moveRequest('left');
+            break;
+        case 39:
+        case 68:
+            moveRequest('right');
+            break;
+        case 40:
+        case 83:
+            moveRequest('down');
+            break;
+    }
+}
+
+function mouseDownHandler(evt) {
+    var relativeX = evt.clientX - canvas.offsetLeft;
+    var relativeY = evt.clientY - canvas.offsetTop;
+    if (relativeX >= 270 && relativeX <= 345 && relativeY >= 270 && relativeY <= 300) {
+        element('register-box').style.display = 'none';
+        element('login-box').style.display = 'block';
+    }
+    else if (relativeX >= 370 && relativeX <= 475 && relativeY >= 270 && relativeY <= 300) {
+        element('login-box').style.display = 'none';
+        element('register-box').style.display = 'block';
+    }
+}
+
+function drawCycle() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var i = 0; i < players.length; i++) {
+        ctx.beginPath();
+        ctx.rect(players[i]['posx'] * 2, players[i]['posy'] * 2, 20, 20);
+        ctx.fillStyle = players[i]['color'];
+        ctx.fill();
+        ctx.closePath();
+    }
+    for (var key in messages) {
+        if (messages[key]['time'] > Date.now() - 10000) {
+            var index;
+            var found = false;
+            for (var i = 0; i < players.length && !found; i++) {
+                if (key === players[i]['username']) {
+                    index = i;
+                    found = true;
+                }
+            }
+            ctx.font = '20px Helvetica';
+            ctx.textAlign = 'center';
+            ctx.fillText(messages[key]['message'], players[index]['posx'] * 2 + 10, players[index]['posy'] * 2 - 10,
+                150);
+        }
+    }
 }

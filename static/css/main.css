@@ -34,7 +34,7 @@ header {
     width: 100%;
 }
 
-#chat_box {
+#chat-box {
     width: 100%;
     height: 240px;
     background-color: #abbbc3;
@@ -53,8 +53,6 @@ header {
 }
 
 #message-form {
-    position: relative;
-    float: bottom;
     height: 21px;
     width: 100%;
     display: none;
@@ -95,7 +93,7 @@ input:focus {
     margin: 0;
     width: 15%;
     height: 100%;
-    padding 0;
+    padding: 0;
     float: left;
 }
 
@@ -107,4 +105,25 @@ input:focus {
     height: 100%;
     width: 85%;
     float: right;
+}
+
+
+#login-button {
+    position: absolute;
+    height: 30px;
+    width:  75px;
+}
+
+#register-button {
+    position: absolute;
+    height: 30px;
+    width:  105px;
+}
+
+#login-box {
+    display: none;
+}
+
+#register-box {
+    display: none;
 }
