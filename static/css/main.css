@@ -1,10 +1,8 @@
 body {
-    font-size: 20px;
-    padding: 0px;
-    margin: 0px;
-    font-family : "Comic Sans MS";
-    color: white;
-    background-color: rgb(40,20,40);
+    background-color : 	#abbbc3;
+    font-family: helvetica;
+    margin: 0;
+    padding: 0;
 }
 
 header {
@@ -12,42 +10,36 @@ header {
     line-height: 70px;
     text-align: center;
     color: #FFFFFF;
-    font-size: 3em;
-    background-color: #FF7256;
+    font-size: 60px;
+    background-color: #7b8b8b;
 }
 
 #game {
     width: 720px;
     margin: 0 auto;
     margin-top: 20px;
-    top: 20px;
-    padding: 0;
 }
 
 #myCanvas {
-    display: block;
     margin-bottom: 20px;
-    background-color: rgb(195,238,238);
+    background-color: rgb(195, 238, 238);
 }
 
-#messages {
-    width: 100%;
+form {
+    display: none;
 }
 
 #chat-box {
+    display: none;
     width: 100%;
     height: 240px;
-    background-color: #abbbc3;
-    color: black;
     font-size: 13px;
-    font-family: Helvetica;
-    position: relative;
-    display: none;
+    font-family: helvetica;
     overflow-y: auto;
+    background-color: #7f92a7;
 }
 
 #messages {
-    width: 100%;
     padding: 0;
     margin: 0;
 }
@@ -55,75 +47,40 @@ header {
 #message-form {
     height: 21px;
     width: 100%;
-    display: none;
 }
 
 #message-input {
-    display: block;
-    border: 0px;
     width: 90%;
+    border: 0;
     padding: 0;
-    height: 21px;
+    height: 100%;
+    float: left;
     text-indent : 5px;
-}
-
-input:focus {
-    outline: 0;
 }
 
 #message-send {
     width: 10%;
     border: 0;
-    margin: 0;
-    height: 21px;
+    height: 100%;
     float: right;
 }
 
 .message-wrapper {
-    width : 100%;
+    width: 100%;
     display: flex;
     border-bottom-width: 1px;
     border-bottom-color: black;
-    border-bottom-style: solid;
+    border-bottom-style: dashed;
 }
 
 .message-username {
     word-wrap: break-word;
-    border: 0;
-    margin: 0;
     width: 15%;
-    height: 100%;
-    padding: 0;
     float: left;
 }
 
 .message-content {
     word-wrap: break-word;
-    border: 0;
-    margin: 0px;
-    padding: 0;
-    height: 100%;
     width: 85%;
     float: right;
-}
-
-
-#login-button {
-    position: absolute;
-    height: 30px;
-    width:  75px;
-}
-
-#register-button {
-    position: absolute;
-    height: 30px;
-    width:  105px;
-}
-
-#login-box {
-    display: none;
-}
-
-#register-box {
-    display: none;
 }

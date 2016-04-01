@@ -42,14 +42,14 @@ module.exports.login_request = function(socket, msg) {
  */
 module.exports.register_request = function(socket, io, msg) {
     Model.findOne({where : {
-        username : msg
+        username : msg['username']
     }}).then(function(user) {
         if (!user) {
             Model.create({
-                username : msg,
+                username : msg['username'],
                 posx : 0,
                 posy : 0,
-                color: '#475893'
+                color: msg['color']
             }).then(function(user) {
                 user.save();
                 socket.emit('register_response', user.username);
@@ -131,4 +131,17 @@ module.exports.message_request = function(io, msg) {
     if (msg['message'] !== '') {
         io.emit('chat_message', msg);
     }
+}
+
+module.exports.open_name_request = function(socket, msg) {
+    Model.findOne({where : {
+        username : msg
+    }}).then(function(user) {
+        if (!user) {
+            socket.emit('open_name_response', msg);
+        }
+        else {
+            socket.emit('open_name_response', false);
+        }
+    })
 }

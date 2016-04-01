@@ -28,6 +28,9 @@ io.on('connection', function(socket) {
     socket.on('message_request', function(msg) {
         controller.message_request(io, msg);
     });
+    socket.on('open_name_request', function(msg) {
+        controller.open_name_request(socket, msg);
+    });
 })
 
 
