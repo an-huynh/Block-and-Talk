@@ -5,12 +5,14 @@ database.sync();
 
 function as_array(user) {
     return {
-        username : user.username,
         posx : user.posx,
         posy : user.posy,
         color : user.color
     };
 }
+
+
+
 /**
  * check if user exists if it does send back username,
  * if not, send back false to represent user does not exist
@@ -79,33 +81,65 @@ module.exports.move_request = function(io, msg) {
             movement = false;
             switch(msg['direction']) {
                 case 'left':
-                    if (user.posx != 0) {
+                    if (user.posx > 0) {
                         user.posx = user.posx - 1;
                         movement = true;
                     }
                     break;
                 case 'right':
-                    if (user.posx != 350) {
+                    if (user.posx < 350) {
                         user.posx = user.posx + 1;
                         movement = true;
                     }
                     break;
                 case 'up':
-                    if (user.posy != 0) {
+                    if (user.posy > 0) {
                         user.posy = user.posy - 1;
                         movement = true;
                     }
                     break;
                 case 'down':
-                    if (user.posy != 230) {
+                    if (user.posy < 230) {
                         user.posy = user.posy + 1;
+                        movement = true;
+                    }
+                    break;
+                case 'up-left':
+                    if (user.posy > 0 && user.posx > 0) {
+                        user.posy = user.posy - 0.707106781187;
+                        user.posx = user.posx - 0.707106781187;
+                        movement = true;
+                    }
+                    break;
+                case 'up-right':
+                    if (user.posy > 0 && user.posx < 360) {
+                        user.posy = user.posy - 0.707106781187;
+                        user.posx = user.posx + 0.707106781187;
+                        movement = true;
+                    }
+                    break;
+                case 'down-left':
+                    if (user.posy < 230 && user.posx > 0) {
+                        user.posy = user.posy + 0.707106781187;
+                        user.posx = user.posx - 0.707106781187;
+                        movement = true;
+                    }
+                    break;
+                case 'down-right':
+                    if (user.posy < 230 && user.posx < 360) {
+                        user.posy = user.posy + 0.707106781187;
+                        user.posx = user.posx + 0.707106781187;
                         movement = true;
                     }
                     break;
             }
             if (movement) {
                 user.save();
-                io.emit('move_response', as_array(user));
+                var response = {
+                    username : user.username,
+                    array : as_array(user)
+                };
+                io.emit('move_response', response);
             }
         }
     });
@@ -118,10 +152,10 @@ module.exports.move_request = function(io, msg) {
  * @param socket        socket to client/clients
  */
 module.exports.update_client = function(socket) {
-    var response = [];
+    var response = {};
     Model.findAll().then(function(users) {
         users.forEach(function(user) {
-            response.push(as_array(user));
+            response[user.username] = as_array(user);
         });
         socket.emit('update_response', response);
     });
