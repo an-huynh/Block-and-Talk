@@ -3,6 +3,8 @@ var database = require(__dirname + '/database.js').sequelize;
 
 database.sync();
 
+var clients = [];
+
 function as_array(user) {
     return {
         posx : user.posx,
@@ -20,12 +22,16 @@ function as_array(user) {
  * @param socket    socket to client requesting login
  * @param msg       username
  */
-module.exports.login_request = function(socket, msg) {
+module.exports.login_request = function(socket, io, msg) {
     Model.findOne({where : {
         username : msg
     }}).then(function(user) {
         if (user) {
-            socket.emit('login_response', msg);
+            socket.handshake.session.userdata = user.username;
+            clients.push(socket.handshake.session.userdata);
+            //console.log(clients);
+            socket.emit('login_response', true);
+            module.exports.update_client(io);
         }
         else {
             socket.emit('login_response', false);
@@ -54,7 +60,9 @@ module.exports.register_request = function(socket, io, msg) {
                 color: msg['color']
             }).then(function(user) {
                 user.save();
-                socket.emit('register_response', user.username);
+                socket.handshake.session.userdata = user.username;
+                clients.push(socket.handshake.session.userdata);
+                socket.emit('register_response', true);
                 module.exports.update_client(io);
             })
         }
@@ -72,14 +80,13 @@ module.exports.register_request = function(socket, io, msg) {
  * @param msg       associative array containing user requesting
  *                  move and direction of move
  */
-module.exports.move_request = function(io, msg) {
-    console.log('test');
+module.exports.move_request = function(socket, io, msg) {
     Model.findOne({
-        where : {username : msg['username']}
+        where : {username : socket.handshake.session.userdata}
     }).then(function(user) {
         if (user) {
             movement = false;
-            switch(msg['direction']) {
+            switch(msg) {
                 case 'left':
                     if (user.posx > 0) {
                         user.posx = user.posx - 1;
@@ -87,7 +94,7 @@ module.exports.move_request = function(io, msg) {
                     }
                     break;
                 case 'right':
-                    if (user.posx < 350) {
+                    if (user.posx < 700) {
                         user.posx = user.posx + 1;
                         movement = true;
                     }
@@ -99,7 +106,7 @@ module.exports.move_request = function(io, msg) {
                     }
                     break;
                 case 'down':
-                    if (user.posy < 230) {
+                    if (user.posy < 460) {
                         user.posy = user.posy + 1;
                         movement = true;
                     }
@@ -112,21 +119,21 @@ module.exports.move_request = function(io, msg) {
                     }
                     break;
                 case 'up-right':
-                    if (user.posy > 0 && user.posx < 360) {
+                    if (user.posy > 0 && user.posx < 700) {
                         user.posy = user.posy - 0.707106781187;
                         user.posx = user.posx + 0.707106781187;
                         movement = true;
                     }
                     break;
                 case 'down-left':
-                    if (user.posy < 230 && user.posx > 0) {
+                    if (user.posy < 460 && user.posx > 0) {
                         user.posy = user.posy + 0.707106781187;
                         user.posx = user.posx - 0.707106781187;
                         movement = true;
                     }
                     break;
                 case 'down-right':
-                    if (user.posy < 230 && user.posx < 360) {
+                    if (user.posy < 460 && user.posx < 700) {
                         user.posy = user.posy + 0.707106781187;
                         user.posx = user.posx + 0.707106781187;
                         movement = true;
@@ -153,7 +160,10 @@ module.exports.move_request = function(io, msg) {
  */
 module.exports.update_client = function(socket) {
     var response = {};
-    Model.findAll().then(function(users) {
+    var index
+    Model.findAll({where : {
+        username : clients
+    }}).then(function(users) {
         users.forEach(function(user) {
             response[user.username] = as_array(user);
         });
@@ -161,10 +171,12 @@ module.exports.update_client = function(socket) {
     });
 }
 
-module.exports.message_request = function(io, msg) {
-    if (msg['message'] !== '') {
-        io.emit('chat_message', msg);
-    }
+module.exports.message_request = function(socket, io, msg) {
+    var message = {
+        username : socket.handshake.session.userdata,
+        message : msg
+    };
+    io.emit('chat_message', message);
 }
 
 module.exports.open_name_request = function(socket, msg) {
@@ -177,5 +189,12 @@ module.exports.open_name_request = function(socket, msg) {
         else {
             socket.emit('open_name_response', false);
         }
-    })
+    });
+}
+
+module.exports.remove_client = function(socket, io) {
+    console.log(socket.handshake.session.userdata);
+    var index = clients.indexOf(socket.handshake.session.userdata);
+    clients.splice(index, 1);
+    module.exports.update_client(io);
 }

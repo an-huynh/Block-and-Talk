@@ -1,6 +1,5 @@
 // GLOBALS
 var socket;
-var username;
 var players = {};
 var messages = {};
 var canvas;
@@ -8,20 +7,19 @@ var ctx;
 
 var x_direction = null;
 var y_direction = null;
+var moving = null;
 
 window.onload = function() {
     canvas = element('myCanvas');
     ctx = canvas.getContext('2d');
     loginScreen();
     initSocket();
-    setInterval(moveRequest, 100);
 }
 
 function initSocket() {
     socket = io();
     socket.on('login_response', function(msg) {
         if (msg) {
-            username = msg;
             loggedIn();
         }
         else {
@@ -30,7 +28,6 @@ function initSocket() {
     });
     socket.on('register_response', function(msg) {
         if (msg) {
-            username = msg;
             loggedIn();
         }
         else {
@@ -57,6 +54,7 @@ function initSocketLoggedIn() {
     socket.on('update_response', function(msg) {
         players = msg;
         drawCycle();
+        console.log('drawing');
     });
     socket.on('move_response', function(msg) {
         players[msg['username']] = msg['array'];
@@ -101,7 +99,7 @@ function loggedIn() {
     window.onkeyup = keyUpHandler;
     document.removeEventListener('mousedown', mouseDownHandler);
     initSocketLoggedIn();
-    socket.emit('update_request', '');
+    //socket.emit('update_request', '');
 }
 
 function loginScreen() {
@@ -136,41 +134,35 @@ function loginScreen() {
 }
 
 function moveRequest() {
+    console.log('moving');
     if (x_direction || y_direction) {
-        var message = {
-            username : username,
-            direction : null
-        }
+        var direction;
         if (x_direction && !y_direction) {
-            message['direction'] = x_direction;
+            direction = x_direction;
         }
         if (y_direction && !x_direction) {
-            message['direction'] = y_direction;
+            direction = y_direction;
         }
         if (x_direction && y_direction) {
             if (x_direction == 'left' && y_direction == 'up') {
-                message['direction'] = 'up-left';
+                direction = 'up-left';
             }
             else if (x_direction == 'right' && y_direction == 'up') {
-                message['direction'] = 'up-right';
+                direction = 'up-right';
             }
             else if (x_direction == 'left' && y_direction == 'down') {
-                message['direction'] = 'down-left';
+                direction = 'down-left';
             }
             else if (x_direction == 'right' && y_direction == 'down') {
-                message['direction'] = 'down-right';
+                direction = 'down-right';
             }
         }
-        socket.emit('move_request', message);
+        socket.emit('move_request', direction);
     }
 }
 
 function messageEntered() {
-    var message = {
-        username : username,
-        message : element('message-input').value
-    }
-    socket.emit('message_request', message);
+    socket.emit('message_request', element('message-input').value);
     element('message-input').value = '';
     return false;
 }
@@ -208,7 +200,7 @@ function drawCycle() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (var key in players) {
         ctx.beginPath();
-        ctx.rect(players[key]['posx'] * 2, players[key]['posy'] * 2, 20, 20);
+        ctx.rect(players[key]['posx'], players[key]['posy'], 20, 20);
         ctx.fillStyle = players[key]['color'];
         ctx.fill();
         ctx.closePath();
@@ -218,7 +210,7 @@ function drawCycle() {
             ctx.font = '20px Helvetica';
             ctx.textAlign = 'center';
             ctx.fillStyle = 'black';
-            ctx.fillText(messages[key]['message'], players[key]['posx'] * 2 + 10, players[key]['posy'] * 2 - 10,
+            ctx.fillText(messages[key]['message'], players[key]['posx'] + 10, players[key]['posy'] - 10,
                 200);
         }
     }
@@ -242,7 +234,7 @@ function customizeDrawCycle() {
     ctx.fillStyle = colors[colorIndex];
     ctx.fill();
     ctx.closePath();
-    
+
     ctx.font = '30px Helvetica';
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
@@ -267,7 +259,7 @@ function customizeDrawCycle() {
     ctx.fillStyle = 'black';
     ctx.textAlign = 'center';
     ctx.fillText('Next', 410, 87);
-    
+
     ctx.beginPath();
     ctx.rect(240, 160, 100, 40);
     ctx.fillStyle = 'red';
@@ -392,8 +384,8 @@ function keyDownHandler(evt) {
             y_direction = 'down'
             break;
     }
-    console.log(y_direction);
-    //moveRequest();
+    if (!moving)
+        moving = setInterval(moveRequest, 1000 / 60);
 }
 function keyUpHandler(evt) {
     switch(evt.keyCode) {
@@ -409,6 +401,9 @@ function keyUpHandler(evt) {
         case 68:
             x_direction = null;
             break;
-
+    }
+    if (!x_direction && !y_direction){
+        clearInterval(moving);
+        moving = null;
     }
 }
