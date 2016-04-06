@@ -261,6 +261,13 @@ function drawCycle() {
                 ctx.moveTo(players[key].posx + 10, players[key].posy);
                 ctx.lineTo(players[key].posx, players[key].posy + 20);
                 ctx.lineTo(players[key].posx + 20, players[key].posy + 20);
+            case 'star':
+                ctx.moveTo(players[key].posx + 10, players[key].posy);
+                ctx.lineTo(players[key].posx + 18, players[key].posy + 20);
+                ctx.lineTo(players[key].posx, players[key].posy + 7);
+                ctx.lineTo(players[key].posx + 20, players[key].posy + 7);
+                ctx.lineTo(players[key].posx + 2, players[key].posy + 20);
+                break;
         }
         ctx.fillStyle = players[key]['color'];
         ctx.fill();
@@ -291,6 +298,14 @@ function customizeDrawCycle() {
             ctx.moveTo(120, 20);
             ctx.lineTo(220, 220);
             ctx.lineTo(20, 220);
+            break;
+        case 3:
+            ctx.moveTo(120, 20);
+            ctx.lineTo(200, 220);
+            ctx.lineTo(20, 90);
+            ctx.lineTo(220, 90);
+            ctx.lineTo(40, 220);
+            break;
     }
     ctx.fillStyle = colors[colorIndex];
     ctx.fill();
@@ -400,13 +415,13 @@ function customizeBlockMouseHandler(evt) {
             shapeIndex--;
         }
         else {
-            shapeIndex = 2
+            shapeIndex = 3
         }
         customizeDrawCycle();
     }
     if (relativeX >= 360 && relativeX <= 460 &&
         relativeY >= 160 && relativeY <= 200) {
-        if (shapeIndex < 2) {
+        if (shapeIndex < 3) {
             shapeIndex++;
         }
         else {
@@ -431,6 +446,9 @@ function registerNewBlock() {
             break;
         case 2:
             shape = 'triangle';
+            break;
+        case 3:
+            shape = 'star';
             break;
     }
     var block = {
