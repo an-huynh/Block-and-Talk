@@ -78,6 +78,7 @@ function initSocketLoggedIn() {
             messages[user] = {};
         messages[user]['message'] = msg['message'];
         messages[user]['time'] = Date.now();
+        messages[user]['color'] = 'black';
         drawCycle();
     });
     socket.on('player_list_response', function(msg) {
@@ -114,6 +115,14 @@ function initSocketLoggedIn() {
             group = msg.username;
         element('chat-messages-player-' + group).appendChild(newMessage);
         element('chat-box').scrollTop = element('chat-box').scrollHeight;
+        
+        if (!messages[msg.sender])
+            messages[msg.sender] = {};
+        messages[msg.sender]['message'] = msg['message'];
+        messages[msg.sender]['time'] = Date.now();
+        messages[msg.sender]['color'] = 'red';
+        drawCycle();
+        
     });
 }
 
@@ -270,7 +279,7 @@ function drawCycle() {
         if (messages[key]['time'] > Date.now() - 10000) {
             ctx.font = '20px Helvetica';
             ctx.textAlign = 'center';
-            ctx.fillStyle = 'black';
+            ctx.fillStyle = messages[key].color;
             ctx.fillText(messages[key]['message'], players[key]['posx'] + 10, players[key]['posy'] - 10,
                 200);
         }
@@ -554,4 +563,11 @@ function privateMessage() {
     socket.emit('private_message', message);
     element('message-input').value = '';
     return false;
+}
+
+window.onload = function() {
+    canvas = element('myCanvas');
+    ctx = canvas.getContext('2d');
+    loginScreen();
+    initSocket();
 }
