@@ -5,9 +5,15 @@ var messages = {};
 var canvas;
 var ctx;
 
-var x_direction = null;
-var y_direction = null;
-var moving = null;
+var chatGroups = {};
+var currentChatGroup;
+
+var direction = {
+    up: null,
+    right: null,
+    down: null,
+    left: null
+};
 
 window.onload = function() {
     canvas = element('myCanvas');
@@ -23,7 +29,7 @@ function initSocket() {
             loggedIn();
         }
         else {
-            alert('User does not exist');
+            alert('Incorrect username or password');
         }
     });
     socket.on('register_response', function(msg) {
@@ -31,15 +37,17 @@ function initSocket() {
             loggedIn();
         }
         else {
-            alert('Failed to make account');
+            alert('user already exists');
         }
     });
     socket.on('open_name_response', function(msg) {
         if (msg) {
             open_name = msg;
+
             element('register').style.display = 'none';
             element('login').style.display = 'none';
             customizeDrawCycle();
+            document.removeEventListener('mousedown', mouseDownHandler);
             document.addEventListener('mousedown', customizeBlockMouseHandler, false);
         }
         else {
@@ -54,7 +62,6 @@ function initSocketLoggedIn() {
     socket.on('update_response', function(msg) {
         players = msg;
         drawCycle();
-        console.log('drawing');
     });
     socket.on('move_response', function(msg) {
         players[msg['username']] = msg['array'];
@@ -64,7 +71,7 @@ function initSocketLoggedIn() {
         var newMessage = element('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg['username'];
         newMessage.querySelector('.message-content').textContent = msg['message'];
-        element('messages').appendChild(newMessage);
+        element('global-chat-messages').appendChild(newMessage);
         element('chat-box').scrollTop = element('chat-box').scrollHeight;
         var user = msg['username'];
         if (!messages[user])
@@ -73,16 +80,59 @@ function initSocketLoggedIn() {
         messages[user]['time'] = Date.now();
         drawCycle();
     });
+    socket.on('player_list_response', function(msg) {
+        for (var i = 0; i < msg.length; i++) {
+            if (!(msg[i] in chatGroups)) {
+                var newChatMessages = document.createElement('ul');
+                newChatMessages.className = 'messages';
+                newChatMessages.id = 'chat-messages-player-' + msg[i];
+                newChatMessages.style.display = 'none';
+                element('chat-box').appendChild(newChatMessages);
+                chatGroups[msg[i]] = element('chat-box').querySelector('#chat-messages-player-' + msg[i]);
+
+                var newBox = document.createElement('option');
+                newBox.value = msg[i];
+                newBox.id = 'drop-down-' + msg[i];
+                newBox.textContent = msg[i];
+                element('chat-box-dropdown').appendChild(newBox);
+            }
+        }
+    });
+    socket.on('player_list_removal', function(msg) {
+        if (msg in chatGroups) {
+            element('chat-box').removeChild(chatGroups[msg]);
+            delete chatGroups[msg];
+            element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
+        }
+    });
+    socket.on('private_message_response', function(msg) {
+        var newMessage = element('message-template').content.cloneNode(true);
+        newMessage.querySelector('.message-username').textContent = msg['username'];
+        newMessage.querySelector('.message-content').textContent = msg['message'];
+        var group = msg.sender;
+        if (msg.username in chatGroups)
+            group = msg.username;
+        element('chat-messages-player-' + group).appendChild(newMessage);
+        element('chat-box').scrollTop = element('chat-box').scrollHeight;
+    });
 }
 
 function loginRequest() {
-    if (element('login-username').value !== '')
-        socket.emit('login_request', element('login-username').value);
+    if (element('login-username').value !== '') {
+        var message = {
+            username : element('login-username').value,
+            password : sha256_digest(element('login-password').value)
+        };
+        socket.emit('login_request', message);
+    }
     return false;
 }
 
 function registerRequest() {
-    if (element('register-username').value !== '')
+    if (element('register-password1').value !== element('register-password2').value) {
+        alert('passwords do not match');
+    }
+    else if (element('register-username').value !== '')
         socket.emit('open_name_request', element('register-username').value);
     return false;
 }
@@ -90,8 +140,10 @@ function registerRequest() {
 function loggedIn() {
     element('login').style.display = 'none';
     element('register').style.display = 'none';
-    element('chat-box').style.display = 'block';
-    element('message-form').style.display = 'block';
+    initChat();
+    element('login-password').value = '';
+    element('register-password1').value = '';
+    element('register-password2').value = '';
     element('message-form').onsubmit = messageEntered;
     element('message-input').onfocus = writing;
     element('message-input').onblur = notWriting;
@@ -99,7 +151,7 @@ function loggedIn() {
     window.onkeyup = keyUpHandler;
     document.removeEventListener('mousedown', mouseDownHandler);
     initSocketLoggedIn();
-    //socket.emit('update_request', '');
+    playerListRequest();
 }
 
 function loginScreen() {
@@ -134,31 +186,29 @@ function loginScreen() {
 }
 
 function moveRequest() {
-    console.log('moving');
-    if (x_direction || y_direction) {
-        var direction;
-        if (x_direction && !y_direction) {
-            direction = x_direction;
-        }
-        if (y_direction && !x_direction) {
-            direction = y_direction;
-        }
-        if (x_direction && y_direction) {
-            if (x_direction == 'left' && y_direction == 'up') {
-                direction = 'up-left';
-            }
-            else if (x_direction == 'right' && y_direction == 'up') {
-                direction = 'up-right';
-            }
-            else if (x_direction == 'left' && y_direction == 'down') {
-                direction = 'down-left';
-            }
-            else if (x_direction == 'right' && y_direction == 'down') {
-                direction = 'down-right';
-            }
-        }
-        socket.emit('move_request', direction);
+    var message = {
+        deltaX : null,
+        deltaY : null
+    };
+    if (direction.left && !direction.right) {
+        message.deltaX = 'left';
     }
+    else if (direction.right && !direction.left) {
+        message.deltaX = 'right';
+    }
+    else {
+        message.deltaX = null;
+    }
+    if (direction.up && !direction.down) {
+        message.deltaY = 'up';
+    }
+    else if (direction.down && !direction.up) {
+        message.deltaY = 'down';
+    }
+    else {
+        message.deltaY = null;
+    }
+    socket.emit('move_request', message);
 }
 
 function messageEntered() {
@@ -200,7 +250,18 @@ function drawCycle() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     for (var key in players) {
         ctx.beginPath();
-        ctx.rect(players[key]['posx'], players[key]['posy'], 20, 20);
+        switch(players[key]['shape']) {
+            case 'square':
+                ctx.rect(players[key].posx, players[key].posy, 20, 20);
+                break;
+            case 'circle':
+                ctx.arc(players[key].posx + 10, players[key].posy + 10, 10, 0, 2*Math.PI);
+                break;
+            case 'triangle':
+                ctx.moveTo(players[key].posx + 10, players[key].posy);
+                ctx.lineTo(players[key].posx, players[key].posy + 20);
+                ctx.lineTo(players[key].posx + 20, players[key].posy + 20);
+        }
         ctx.fillStyle = players[key]['color'];
         ctx.fill();
         ctx.closePath();
@@ -224,7 +285,7 @@ function customizeDrawCycle() {
             ctx.rect(20, 20, 200, 200);
             break;
         case 1:
-            ctx.arc(120, 120, 200, 0, 2*Math.PI);
+            ctx.arc(120, 120, 100, 0, 2*Math.PI);
             break;
         case 2:
             ctx.moveTo(120, 20);
@@ -260,6 +321,11 @@ function customizeDrawCycle() {
     ctx.textAlign = 'center';
     ctx.fillText('Next', 410, 87);
 
+    ctx.font = '30px Helvetica';
+    ctx.fillStyle = 'black';
+    ctx.textAlign = 'center';
+    ctx.fillText('Shape', 350, 140);
+
     ctx.beginPath();
     ctx.rect(240, 160, 100, 40);
     ctx.fillStyle = 'red';
@@ -293,7 +359,7 @@ function customizeDrawCycle() {
     ctx.font = '40px Helvetica';
     ctx.fillStyle = 'black';
     ctx.textAlign = 'left';
-    ctx.fillText(open_name, 20, 260);
+    ctx.fillText(open_name, 20, 440);
 }
 
 var open_name;
@@ -331,24 +397,22 @@ function customizeBlockMouseHandler(evt) {
     if (relativeX >= 240 && relativeX <= 340 &&
         relativeY >= 160 && relativeY <= 200) {
         if (shapeIndex > 0) {
+            shapeIndex--;
+        }
+        else {
+            shapeIndex = 2
+        }
+        customizeDrawCycle();
+    }
+    if (relativeX >= 360 && relativeX <= 460 &&
+        relativeY >= 160 && relativeY <= 200) {
+        if (shapeIndex < 2) {
             shapeIndex++;
         }
         else {
             shapeIndex = 0;
         }
         customizeDrawCycle();
-        console.log('shape back');
-    }
-    if (relativeX >= 360 && relativeX <= 460 &&
-        relativeY >= 160 && relativeY <= 200) {
-        if (shapeIndex > 0) {
-            shapeIndex--;
-        }
-        else {
-            shapeIndex = 2;
-        }
-        customizeDrawCycle();
-        console.log('shape next');
     }
     if (relativeX >= 240 && relativeX <= 460 &&
         relativeY >= 220 && relativeY <= 260) {
@@ -357,53 +421,137 @@ function customizeBlockMouseHandler(evt) {
 }
 
 function registerNewBlock() {
+    var shape;
+    switch (shapeIndex) {
+        case 0:
+            shape = 'square';
+            break;
+        case 1:
+            shape = 'circle';
+            break;
+        case 2:
+            shape = 'triangle';
+            break;
+    }
     var block = {
         username : open_name,
-        color : colors[colorIndex]
+        password : sha256_digest(element('register-password1').value),
+        color    : colors[colorIndex],
+        shape    : shape
     };
     socket.emit('register_request', block);
     document.removeEventListener('mousedown', customizeBlockMouseHandler, false);
 }
 
 function keyDownHandler(evt) {
+    var change = false;
     switch(evt.keyCode) {
         case 38:
         case 87:
-            y_direction = 'up';
+            if (!direction.up) {
+                direction.up = true;
+                change = true;
+            }
             break;
         case 37:
         case 65:
-            x_direction = 'left';
+            if (!direction.left) {
+                direction.left = true;
+                change = true;
+            }
             break;
         case 39:
         case 68:
-            x_direction = 'right';
+            if (!direction.right) {
+                direction.right = true;
+                change = true;
+            }
             break;
         case 40:
         case 83:
-            y_direction = 'down'
+            if (!direction.down) {
+                direction.down = true;
+                change = true;
+            }
             break;
     }
-    if (!moving)
-        moving = setInterval(moveRequest, 1000 / 60);
+    if (change)
+        moveRequest();
 }
 function keyUpHandler(evt) {
+    var change = false;
     switch(evt.keyCode) {
         case 38:
         case 87:
+            if (direction.up) {
+                direction.up = false;
+                change = true;
+            }
+            break;
         case 40:
         case 83:
-            y_direction = null
+            if (direction.down) {
+                direction.down = false;
+                change = true;
+            }
             break;
         case 37:
         case 65:
+            if (direction.left) {
+                direction.left = false;
+                change = true;
+            }
+            break;
         case 39:
         case 68:
-            x_direction = null;
+            if (direction.right) {
+                direction.right = false;
+                change = true;
+            }
             break;
     }
-    if (!x_direction && !y_direction){
-        clearInterval(moving);
-        moving = null;
+    if (change)
+        moveRequest();
+}
+
+function initChat() {
+    element('message-form').style.display = 'block';
+    element('chat-box-select').style.display = 'block';
+    element('chat-box').style.display = 'block';
+    element('chat-box-dropdown').onchange = chatBoxChanger;
+    chatGroups.global = element('chat-box').querySelector('#global-chat-messages');
+    currentChatGroup = 'global';
+}
+
+function playerListRequest() {
+    socket.emit('player_list_request', '');
+}
+
+function chatBoxChanger() {
+    var selected = element('chat-box-dropdown').value;
+    if (currentChatGroup === 'global') {
+        element('global-chat-messages').style.display = 'none';
     }
+    else {
+        element('chat-messages-player-' + currentChatGroup).style.display = 'none';
+    }
+    if (selected === 'global') {
+        element('global-chat-messages').style.display = 'block';
+        element('message-form').onsubmit = messageEntered;
+    }
+    else {
+        element('chat-messages-player-' + selected).style.display = 'block';
+        element('message-form').onsubmit = privateMessage;
+    }
+    currentChatGroup = selected;
+}
+
+function privateMessage() {
+    var message = {
+        username : currentChatGroup,
+        message : element('message-input').value
+    };
+    socket.emit('private_message', message);
+    element('message-input').value = '';
+    return false;
 }

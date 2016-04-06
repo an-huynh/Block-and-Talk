@@ -4,6 +4,7 @@
     <title>Block and Talk</title>
     <link rel='stylesheet' type='text/css' href='css/main.css'>
     <script src='/socket.io/socket.io.js'></script>
+    <script src='js/sha256.js'></script>
     <script src='js/block_and_talk.js'></script>
 </head>
 <body>
@@ -11,18 +12,45 @@
     <div id='game'>
         <canvas id='myCanvas' height='480' width='720'></canvas>
             <form id="login">
-                Username<input type="text" id="login-username">
-                <input type="submit" value="submit">
+                <table>
+                    <tr>
+                        <td>Username</td>
+                        <td><input type='text' id='login-username'></td>
+                    </tr>
+                    <tr>
+                        <td>Password</td>
+                        <td><input type='password' id='login-password'></td>
+                    </tr>
+                    <tr><td></td><td><input type='submit' value='submit'></td></tr>
+                </table>
             </form>
             <form id='register'>
-                Register<input type='text' id='register-username'>
-                <input type='submit' value='submit'>
+                <table>
+                    <tr>
+                        <td>Username</td>
+                        <td><input type='test' id='register-username' autocomplete='off'></td>
+                    </tr>
+                    <tr>
+                        <td>Enter Password</td>
+                        <td><input type='password' id='register-password1'></td>
+                    </tr>
+                    <tr>
+                        <td>Re-Enter Password</td>
+                        <td><input type='password' id='register-password2'></td>
+                    </td>
+                    <tr><td></td><td><input type='submit' value='submit'></td></tr>
+                </table>
             </form>
+        <form id='chat-box-select'>
+            <select name='chat-box-session' id='chat-box-dropdown'>
+                <option value='global'>global</option>
+            </select>
+        </form>
         <div id='chat-box'>
-            <ul id='messages'></ul>
+            <ul class='messages' id='global-chat-messages'></ul>
         </div>
         <form id='message-form'>
-            <input type='test' id='message-input'>
+            <input type='test' id='message-input' autocomplete='off'>
             <button id='message-send'>SEND</button>
         </form>
     </div>

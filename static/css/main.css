@@ -23,6 +23,7 @@ header {
 #myCanvas {
     margin-bottom: 20px;
     background-color: rgb(195, 238, 238);
+    background: url('/img/beach.png');
 }
 
 form {
@@ -35,11 +36,11 @@ form {
     height: 240px;
     font-size: 13px;
     font-family: helvetica;
-    overflow-y: auto;
+    overflow-y: scroll;
     background-color: #7f92a7;
 }
 
-#messages {
+.messages {
     padding: 0;
     margin: 0;
 }
@@ -83,4 +84,12 @@ form {
     word-wrap: break-word;
     width: 85%;
     float: right;
+}
+
+#chat-box-select {
+    z-index: 1;
+    float: right;
+    position: relative;
+    top: 20px;
+    right: 17px;
 }

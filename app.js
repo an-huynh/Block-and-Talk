@@ -28,8 +28,7 @@ io.on('connection', function(socket) {
         controller.register_request(socket, io, msg);
     })
     socket.on('move_request', function(msg) {
-        console.log('moving');
-        controller.move_request(socket, io, msg);
+        controller.move_request(socket, msg);
     });
     socket.on('update_request', function(msg) {
         controller.update_client(socket);
@@ -40,12 +39,19 @@ io.on('connection', function(socket) {
     socket.on('open_name_request', function(msg) {
         controller.open_name_request(socket, msg);
     });
+    socket.on('player_list_request', function(msg) {
+        controller.playerListRequest(socket);
+    });
+    socket.on('private_message', function(msg) {
+        controller.private_message(socket, msg);
+    });
     socket.on('disconnect', function() {
         controller.remove_client(socket, io);
         delete socket.handshake.session.userdata;
     });
-})
+});
 
+setInterval(controller.update_position, 1000 / 60, io);
 
 http.listen(3000, function() {
     console.log('listening on *:3000');

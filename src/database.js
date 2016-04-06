@@ -12,7 +12,11 @@ module.exports.user = module.exports.sequelize.define('user', {
         type: Sequelize.STRING,
         unique: true
     },
-    posx  : Sequelize.INTEGER,
-    posy  : Sequelize.INTEGER,
-    color : Sequelize.STRING
+    password : Sequelize.STRING,
+    posx     : Sequelize.INTEGER,
+    posy     : Sequelize.INTEGER,
+    color    : Sequelize.STRING,
+    shape    : Sequelize.STRING,
+    deltaX   : Sequelize.STRING,
+    deltaY   : Sequelize.STRING
 });
