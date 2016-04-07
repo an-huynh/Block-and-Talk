@@ -20,38 +20,38 @@ app.get('/', function(req, res) {
 });
 
 io.on('connection', function(socket) {
-    console.log('A user has connected');
+    console.log('a user has connected.');
     socket.on('login_request', function(msg) {
-        controller.login_request(socket, io, msg);
+        controller.login_request(socket, msg);
     });
     socket.on('register_request', function(msg) {
-        controller.register_request(socket, io, msg);
-    })
-    socket.on('move_request', function(msg) {
-        controller.move_request(socket, msg);
-    });
-    socket.on('update_request', function(msg) {
-        controller.update_client(socket);
-    });
-    socket.on('message_request', function(msg) {
-        controller.message_request(socket, io, msg);
+        controller.register_request(socket, msg);
     });
     socket.on('open_name_request', function(msg) {
         controller.open_name_request(socket, msg);
     });
+    socket.on('direction_update', function(msg) {
+        controller.direction_update(socket, msg);
+    });
     socket.on('player_list_request', function(msg) {
-        controller.playerListRequest(socket);
+        controller.player_list_request(socket);
     });
-    socket.on('private_message', function(msg) {
-        controller.private_message(socket, msg);
+    socket.on('message_post', function(msg) {
+        controller.message_post(socket, msg);
     });
-    socket.on('disconnect', function() {
-        controller.remove_client(socket, io);
-        delete socket.handshake.session.userdata;
+    socket.on('private_message_post', function(msg) {
+        controller.private_message_post(socket, msg);
+    });
+    socket.on('message_list_request', function(msg) {
+        controller.message_list_request(socket);
+    })
+    socket.on('disconnect', function(msg) {
+        console.log('a user has disconnected');
+        controller.client_removal(socket);
     });
 });
 
-setInterval(controller.update_position, 1000 / 60, io);
+setInterval(controller.updating, 1000 / 60, io);
 
 http.listen(3000, function() {
     console.log('listening on *:3000');

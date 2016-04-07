@@ -86,7 +86,8 @@ form {
     float: right;
 }
 
-#chat-box-select {
+#chat-box-dropdown {
+    display: none;
     z-index: 1;
     float: right;
     position: relative;

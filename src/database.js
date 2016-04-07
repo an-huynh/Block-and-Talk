@@ -4,6 +4,7 @@ module.exports = {};
 
 module.exports.sequelize = new Sequelize('database', 'username', 'password', {
     dialect: 'sqlite',
+    logging: false,
     storage: __dirname + '/../database/users.sqlite3'
 });
 
