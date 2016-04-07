@@ -18,6 +18,5 @@ module.exports.user = module.exports.sequelize.define('user', {
     posy     : Sequelize.INTEGER,
     color    : Sequelize.STRING,
     shape    : Sequelize.STRING,
-    deltaX   : Sequelize.STRING,
-    deltaY   : Sequelize.STRING
+    admin    : Sequelize.BOOLEAN
 });

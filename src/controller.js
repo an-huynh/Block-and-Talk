@@ -47,7 +47,8 @@ module.exports.register_request = function(socket, msg) {
                 color    : msg.color,
                 shape    : msg.shape,
                 posx     : 0,
-                posy     : 0
+                posy     : 0,
+                admin    : false
             }).then(function(user) {
                 socket.handshake.session.userdata = user.username;
                 clients[user.username] = {};
@@ -85,8 +86,10 @@ function client_addition(socket, record) {
 
 module.exports.client_removal = function(socket) {
     if (socket.handshake.session.userdata) {
-        clients[socket.handshake.session.userdata].record.save();
-        socket.broadcast.emit('player_removal', socket.handshake.session.userdata);
+        if (socket.handshake.session.userdata in clients) {
+            clients[socket.handshake.session.userdata].record.save();
+            socket.broadcast.emit('player_removal', socket.handshake.session.userdata);
+        }
         delete clients[socket.handshake.session.userdata];
     }
 }
@@ -98,13 +101,18 @@ module.exports.player_list_request = function(socket) {
     socket.emit('player_list_response', response);
 }
 
-module.exports.message_post = function(socket, msg) {
-    var message = {
-        username : socket.handshake.session.userdata,
-        message  : msg
-    };
-    socket.broadcast.emit('message_post', message);
-    socket.emit('message_post', message);
+module.exports.message_post = function(io, socket, msg) {
+    console.log(msg.charAt(0));
+    if (msg.charAt(0) === '/') {
+        command(socket.handshake.session.userdata, msg.split(' '), io);
+    }
+    else {
+        var message = {
+            username : socket.handshake.session.userdata,
+            message  : msg
+        };
+        io.emit('message_post', message);
+    }
 }
 
 module.exports.private_message_post = function(socket, msg) {
@@ -188,6 +196,19 @@ module.exports.updating = function(socket) {
         module.exports.player_list_request(socket);
 }
 
+function command(user, param, io) {
+    if (clients[user].record.admin) {
+        if (param[0] === '/kick') {
+            if (param[1] in clients) {
+                clients[param[1]].record.save();
+                io.emit('player_removal', param[1]);
+                io.to(clients[param[1]].socketID).emit('kicked', '')
+                delete clients[param[1]];
+                module.exports.player_list_request(io);
+            }
+        }
+    }
+}
 setInterval(function() {
     for (var key in clients)
         clients[key].record.save();

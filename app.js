@@ -37,7 +37,7 @@ io.on('connection', function(socket) {
         controller.player_list_request(socket);
     });
     socket.on('message_post', function(msg) {
-        controller.message_post(socket, msg);
+        controller.message_post(io, socket, msg);
     });
     socket.on('private_message_post', function(msg) {
         controller.private_message_post(socket, msg);

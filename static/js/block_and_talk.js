@@ -97,11 +97,14 @@ function initGameSockets() {
     });
     socket.on('player_removal', function(msg) {
         delete players.msg;
-        element('chat-box').removeChild(element('chat-messages-player-' + msg));
-        element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
+        if (element('chat-messages-player-' + msg)){
+            element('chat-box').removeChild(element('chat-messages-player-' + msg));
+            element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
+        }
         drawGame();
     });
     socket.on('player_list_response', function(msg) {
+        console.log('working');
         players = msg;
         drawGame();
     });
@@ -137,6 +140,9 @@ function initGameSockets() {
         messages[msg.sender].time = Date.now();
         messages[msg.sender].color = 'red';
         drawGame();
+    });
+    socket.on('kicked', function(msg) {
+        window.location.reload();
     });
 }
 
@@ -347,6 +353,12 @@ function chatBoxInitialize() {
     currentChatGroup = 'global';
     element('chat-box-dropdown').onchange = chatBoxChanger;
 
+}
+
+function chatBoxUninitialize() {
+    element('chat-box-dropdown').style.display = 'none';
+    element('chat-box').style.display = 'none';
+    element('message-form').style.display = 'none';
 }
 
 function chatBoxChanger() {
