@@ -102,7 +102,6 @@ module.exports.player_list_request = function(socket) {
 }
 
 module.exports.message_post = function(io, socket, msg) {
-    console.log(msg.charAt(0));
     if (msg.charAt(0) === '/') {
         command(socket.handshake.session.userdata, msg.split(' '), io);
     }
@@ -202,7 +201,7 @@ function command(user, param, io) {
             if (param[1] in clients) {
                 clients[param[1]].record.save();
                 io.emit('player_removal', param[1]);
-                io.to(clients[param[1]].socketID).emit('kicked', '')
+                io.to(clients[param[1]].socketID).emit('kicked', '');
                 delete clients[param[1]];
                 module.exports.player_list_request(io);
             }

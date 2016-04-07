@@ -10,10 +10,23 @@ var direction = {
     up    : false,
     down  : false
 };
+var socketFunctions = {
+    login_response : null,
+    open_name_response : null,
+    register_response : null,
+    player_addition : null,
+    player_removal : null,
+    player_list_response : null,
+    message_list_response : null,
+    message_post : null,
+    private_message : null,
+    kicked : null
+};
 
 window.onload = function() {
     canvas = element('myCanvas');
     ctx = canvas.getContext('2d');
+    initSockets();
     loginMenu();
 }
 
@@ -49,70 +62,87 @@ function loginMenu() {
     ctx.fillStyle = 'black';
     ctx.fillText('Register', canvas.width / 2 + 75, 293);
 
-    initLoginMenuSockets();
     document.addEventListener('mousedown', loginMenuHandler, false);
     element('login').onsubmit = loginRequest;
     element('register').onsubmit = registerRequest;
 }
 
-function initLoginMenuSockets() {
-    socket = io();
-    socket.on('login_response', function(msg) {
-        if (msg) {
+function initLoginFunctions() {
+    socketFunctions.login_response = function(msg) {
+        if (msg)
             gameInit();
-        }
         else
             alert('Invalid username or password');
-    });
-    socket.on('open_name_response', function(msg) {
+    };
+    socketFunctions.open_name_response = function(msg) {
         if (msg) {
             newPlayerInfo.openName = msg;
             initRegistration();
         }
         else
             alert('Name taken');
-    });
-    socket.on('register_response', function(msg) {
-        if (msg) {
+    };
+    socketFunctions.register_response = function(msg) {
+        if (msg)
             gameInit();
-        }
         else
             alert('Something bad happened');
-    });
-    socket.on('player_addition', function(msg) {});
-    socket.on('player_removal', function(msg) {});
-    socket.on('player_list_response', function(msg) {});
-    socket.on('message_post', function(msg) {});
-    socket.on('private_message', function(msg) {});
+    };
+    socketFunctions.player_addition = function(msg) {};
+    socketFunctions.player_removal  = function(msg) {};
+    socketFunctions.player_list_response = function(msg) {};
+    socketFunctions.message_list_response = function(msg) {};
+    socketFunctions.message_post = function(msg) {};
+    socketFunctions.private_message = function(msg) {};
+    socketFunctions.kicked = function(msg) {};
 }
 
-function initGameSockets() {
-    socket.on('login_response', function(msg) {});
-    socket.on('open_name_response', function(msg) {});
-    socket.on('register_response', function(msg) {});
-    socket.on('player_addition', function(msg) {
+function initSockets() {
+    socket = io();
+    socket.on('login_response', function(msg) {socketFunctions.login_response(msg);});
+    socket.on('open_name_response', function(msg) {socketFunctions.open_name_response(msg);});
+    socket.on('register_response', function(msg) {socketFunctions.register_response(msg);});
+    socket.on('player_addition', function(msg) {socketFunctions.player_addition(msg);});
+    socket.on('player_removal', function(msg) {socketFunctions.player_removal(msg);});
+    socket.on('player_list_response', function(msg) {socketFunctions.player_list_response(msg);});
+    socket.on('message_list_response', function(msg) {socketFunctions.message_list_response(msg);});
+    socket.on('message_post', function(msg) {socketFunctions.message_post(msg);});
+    socket.on('private_message', function(msg) {socketFunctions.private_message(msg);});
+    socket.on('kicked', function(msg) {socketFunctions.kicked(msg);});
+    initLoginFunctions();
+}
+
+function initGameFunctions() {
+    socketFunctions.login_response = function(msg) {};
+    socketFunctions.open_name_response = function(msg) {};
+    socketFunctions.register_response = function(msg) {};
+    socketFunctions.player_addition = function(msg) {
         playerAddition(msg.username);
         players[msg.username] = msg;
         drawGame();
-    });
-    socket.on('player_removal', function(msg) {
+    };
+    socketFunctions.player_removal = function(msg) {
         delete players.msg;
-        if (element('chat-messages-player-' + msg)){
+        if (element('chat-messages-player-' + msg)) {
             element('chat-box').removeChild(element('chat-messages-player-' + msg));
             element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
         }
+        if (currentChatGroup === msg) {
+            currentChatGroup = 'global';
+            element('global-chat-messages').style.display = 'block';
+            element('message-form').onsubmit = messagePost;
+        }
         drawGame();
-    });
-    socket.on('player_list_response', function(msg) {
-        console.log('working');
+    };
+    socketFunctions.player_list_response = function(msg) {
         players = msg;
         drawGame();
-    });
-    socket.on('message_list_response', function(msg) {
+    };
+    socketFunctions.message_list_response = function(msg) {
         for (var i = 0; i < msg.length; i++)
             playerAddition(msg[i]);
-    });
-    socket.on('message_post', function(msg) {
+    };
+    socketFunctions.message_post = function(msg) {
         var newMessage = element('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg.username;
         newMessage.querySelector('.message-content').textContent = msg.message;
@@ -124,8 +154,8 @@ function initGameSockets() {
         messages[msg.username].time = Date.now();
         messages[msg.username].color = 'black';
         drawGame();
-    });
-    socket.on('private_message', function(msg) {
+    };
+    socketFunctions.private_message = function(msg) {
         var newMessage = element('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg.sender;
         newMessage.querySelector('.message-content').textContent = msg.message;
@@ -140,14 +170,21 @@ function initGameSockets() {
         messages[msg.sender].time = Date.now();
         messages[msg.sender].color = 'red';
         drawGame();
-    });
-    socket.on('kicked', function(msg) {
-        window.location.reload();
-    });
+    };
+    socketFunctions.kicked = function(msg) {
+        initLoginFunctions();
+        loginMenu();
+        chatBoxUninitialize();
+        messages = {};
+        players = {};
+        currentMessageBox = 'global';
+        window.onkeydown = keyDownHandler;
+        window.onkeyup = keyUpHandler;
+    };
 }
 
 function gameInit() {
-    initGameSockets();
+    initGameFunctions();
     chatBoxInitialize();
     socket.emit('player_list_request', '');
     socket.emit('message_list_request', '');
@@ -353,6 +390,12 @@ function chatBoxInitialize() {
     currentChatGroup = 'global';
     element('chat-box-dropdown').onchange = chatBoxChanger;
 
+}
+
+function chatBoxUninitialize() {
+    element('chat-box-dropdown').style.display = 'none';
+    element('chat-box').style.display = 'none';
+    element('message-form').style.display = 'none';
 }
 
 function chatBoxChanger() {
