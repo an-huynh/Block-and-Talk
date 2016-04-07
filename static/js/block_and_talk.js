@@ -145,6 +145,7 @@ function gameInit() {
     chatBoxInitialize();
     socket.emit('player_list_request', '');
     socket.emit('message_list_request', '');
+    document.removeEventListener('mousedown', loginMenuHandler, false);
     window.onkeydown = keyDownHandler;
     window.onkeyup = keyUpHandler;
 }

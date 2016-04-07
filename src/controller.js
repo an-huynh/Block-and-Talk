@@ -85,6 +85,7 @@ function client_addition(socket, record) {
 
 module.exports.client_removal = function(socket) {
     if (socket.handshake.session.userdata) {
+        clients[socket.handshake.session.userdata].record.save();
         socket.broadcast.emit('player_removal', socket.handshake.session.userdata);
         delete clients[socket.handshake.session.userdata];
     }
@@ -186,3 +187,8 @@ module.exports.updating = function(socket) {
     if (movement)
         module.exports.player_list_request(socket);
 }
+
+setInterval(function() {
+    for (var key in clients)
+        clients[key].record.save();
+}, 10000);
