@@ -355,12 +355,6 @@ function chatBoxInitialize() {
 
 }
 
-function chatBoxUninitialize() {
-    element('chat-box-dropdown').style.display = 'none';
-    element('chat-box').style.display = 'none';
-    element('message-form').style.display = 'none';
-}
-
 function chatBoxChanger() {
     var selected = element('chat-box-dropdown').value;
     if (currentChatGroup === 'global')
