@@ -222,7 +222,6 @@ function initGameFunctions() {
         initLoginFunctions();
         loginMenu();
         chatBoxUninitialize();
-        element('user-box').style.display = 'none';
         messages = {};
         players = {};
         currentMessageBox = 'global';
@@ -281,21 +280,12 @@ function initiateSnakeControls() {
 function gameInit() {
     initGameFunctions();
     chatBoxInitialize();
-    userBoxInitialize();
     socket.emit('player_list_request', '');
     socket.emit('message_list_request', '');
     document.removeEventListener('mousedown', loginMenuHandler, false);
     window.onkeydown = keyDownHandler;
     window.onkeyup = keyUpHandler;
 }
-
-function userBoxInitialize() {
-    element('user-box').style.display = 'block';
-    /*for(var key in players) {
-        // TODO: Generate player list
-    }*/
-}
-
 
 /*
 *    Adds the chat box to the client,
@@ -552,7 +542,7 @@ function snakeDraw(msg) {
     ctx.font = '20px Helvetica';
     ctx.textAlign = 'left';
     ctx.fillStyle = 'black';
-    ctx.fillText("Score: " + msg.snake.length-1, canvas.height + 4, canvas.height - 30);
+    ctx.fillText("Score: " + (msg.snake.length - 1), canvas.height + 4, canvas.height - 30);
 }
 
 function chatBoxInitialize() {
@@ -575,7 +565,7 @@ function chatBoxUninitialize() {
     element('chat-box-dropdown').style.display = 'none';
     element('chat-box').style.display = 'none';
     element('message-form').style.display = 'none';
-    element('playerlist_box').style.display = 'none';
+    element('playerlist-box').style.display = 'none';
 }
 
 function chatBoxChanger() {

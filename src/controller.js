@@ -273,8 +273,9 @@ function snake_action(socket, player) {
                     var available = true;
                     for (var i = 0; i < snakePlayers[player].snake.length && !snackPlaced; i++) {
                         if (newSnack.posx === snakePlayers[player].snake[i].posx &&
-                            newSnack.posy === snakePlayers[player].snake[i].posy)
-                            available = false;
+                            newSnack.posy === snakePlayers[player].snake[i].posy) {
+                                available = false;
+                            }
                         if (available) {
                             snakePlayers[player].snack = newSnack;
                             snackPlaced = true;
@@ -287,7 +288,7 @@ function snake_action(socket, player) {
     if (done || !(player in clients)) {
         snakeScore.create({
             username : player,
-            score    : snakePlayers[player].snake.length
+            score    : snakePlayers[player].snake.length-2,
         });
         clearInterval(snakeGame[player]);
         delete snakeGame[player];
