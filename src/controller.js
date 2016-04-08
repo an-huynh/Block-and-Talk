@@ -294,18 +294,44 @@ module.exports.snake_direction_update = function(socket, msg) {
 }
 
 function command(user, param, io, socket) {
-    if (clients[user].record.admin) {
-        if (param[0] === '/kick') {
-            if (param[1] in clients) {
-                clients[param[1]].record.save();
-                io.emit('player_removal', param[1]);
-                io.to(clients[param[1]].socketID).emit('kicked', '');
-                delete clients[param[1]];
-                module.exports.player_list_request(io);
-            }
+    if (param[0] === '/kick') {
+        if (clients[user].record.admin && param[1] in clients) {
+            clients[param[1]].record.save();
+            io.emit('player_removal', param[1]);
+            io.to(clients[param[1]].socketID).emit('kicked', '');
+            delete clients[param[1]];
+            module.exports.player_list_request(io);
         }
     }
-    if (param[0] === '/snake')
+    else if (param[0] === '/op') {
+        if (param[1] in clients)
+            clients[param[1]].record.admin = true;
+        else {
+            model.findOne({where : {
+                username : param[1]
+            }}).then(function(user) {
+                if (user) {
+                    user.admin = true;
+                    user.save();
+                }
+            });
+        }
+    }
+    else if (param[0] === '/deop') {
+        if (param[1] in clients)
+            clients[param[1]].record.admin = false;
+        else {
+            model.findOne({where : {
+                username : param[1]
+            }}).then(function(user) {
+                if (user) {
+                    user.admin = false;
+                    user.save();
+                }
+            });
+        }
+    }
+    else if (param[0] === '/snake')
         snake_game_initiate(socket);
 
 }
