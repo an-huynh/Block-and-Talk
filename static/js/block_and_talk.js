@@ -28,10 +28,8 @@ var snakeGameList = {};
 
 
 /*
-*
 *    Initiates the app on load, creates the canvas
 *    initiates the sockets, and draws the login menu
-*
 */
 window.onload = function() {
     canvas = element('myCanvas');
@@ -41,12 +39,10 @@ window.onload = function() {
 }
 
 /*
-*
 *    Draws the login menu for the game, as well as
 *    adding event listeners to register user clicks
 *    as well as registering the submission boxes for
 *    logging in and registering
-*
 */
 function loginMenu() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -87,10 +83,8 @@ function loginMenu() {
 
 
 /*
-*
 *    Initiates the socket functions for logging in,
 *    removing the uncessary ones temporarily
-*
 */
 function initLoginFunctions() {
     socketFunctions.login_response = function(msg) {
@@ -127,11 +121,9 @@ function initLoginFunctions() {
 
 
 /*
-*
 *    Initiates all of the socket functions, assigning each of them a
 *    function corresponding with their function in the socketFunctions
 *    object
-*
 */
 function initSockets() {
     socket = io();
@@ -153,13 +145,10 @@ function initSockets() {
 
 
 /*
-*
-*
 *    Initiates all of the socket functions that the
 *    actual game uses. This also includes temporarily
 *    nilling the functions that are unnecessary for the
 *    game
-*
 */
 function initGameFunctions() {
     socketFunctions.login_response = function(msg) {};

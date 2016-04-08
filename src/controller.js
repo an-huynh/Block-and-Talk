@@ -226,10 +226,11 @@ function snake_game_initiate(socket) {
             direction : null
         };
         snakePlayers[socket.handshake.session.userdata].snake = [];
-        snakePlayers[socket.handshake.session.userdata].snake.push(new block(1, 1));
+        snakePlayers[socket.handshake.session.userdata].snake.push(new block(5, 5));
         socket.emit('initiate_snake', list);
         snakeGame[socket.handshake.session.userdata] = setInterval(snake_action, 100,
         socket, socket.handshake.session.userdata);
+
     });
 }
 
@@ -269,11 +270,14 @@ function snake_action(socket, player) {
                         Math.floor((Math.random() * 21) + 1),
                         Math.floor((Math.random() * 21) + 1)
                     );
+                    var available = true;
                     for (var i = 0; i < snakePlayers[player].snake.length && !snackPlaced; i++) {
-                        if (newSnack.posx !== snakePlayers[player].snake[i].posx &&
-                            newSnack.posy !== snakePlayers[player].snake[i].posy) {
-                                snakePlayers[player].snack = newSnack;
-                                snackPlaced = true;
+                        if (newSnack.posx === snakePlayers[player].snake[i].posx &&
+                            newSnack.posy === snakePlayers[player].snake[i].posy)
+                            available = false;
+                        if (available) {
+                            snakePlayers[player].snack = newSnack;
+                            snackPlaced = true;
                         }
                     }
                 }
