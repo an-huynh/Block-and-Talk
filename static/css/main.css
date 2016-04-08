@@ -30,9 +30,25 @@ form {
     display: none;
 }
 
+#playerlist-box {
+    display: none;
+    float: right;
+    width: 20%;
+    height: 260px;
+    font-size: 13px;
+    font-family: helvetica;
+    background-color: #7f92a7;
+}
+
+.players {
+    padding: 0;
+    margin: 0;
+}
+
 #chat-box {
     display: none;
-    width: 100%;
+    float: left;
+    width: 80%;
     height: 240px;
     font-size: 13px;
     font-family: helvetica;
@@ -47,7 +63,7 @@ form {
 
 #message-form {
     height: 21px;
-    width: 100%;
+    width: 80%;
 }
 
 #message-input {
@@ -91,8 +107,7 @@ form {
     z-index: 1;
     float: right;
     position: relative;
-    top: 20px;
-    right: 17px;
+    right: 0px;
 }
 
 #user-box {
