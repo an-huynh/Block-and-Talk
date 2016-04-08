@@ -331,6 +331,13 @@ function command(user, param, io, socket) {
             });
         }
     }
+    else if (param[0] === '/help') {
+        var message = {
+            username : 'help',
+            message : "/snake   : initiate snake game"
+        };
+        socket.emit('message_post', message);
+    }
     else if (param[0] === '/snake')
         snake_game_initiate(socket);
 
