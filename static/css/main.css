@@ -94,3 +94,22 @@ form {
     top: 20px;
     right: 17px;
 }
+
+#user-box {
+    display: none;
+    position: relative;
+    float: right;
+    height: 480px;
+    right: 150px;
+    top: 20px;
+    width: 250px;
+    background-color: #7f92a7;
+}
+
+#users {
+    width: 100%;
+    display: flex;
+    border-bottom-width: 1px;
+    border-bottom-color: black;
+    border-bottom-style: dashed;
+}
