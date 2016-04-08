@@ -20,6 +20,8 @@ var socketFunctions = {
     message_list_response : null,
     message_post : null,
     private_message : null,
+    initiate_snake : null,
+    snake_update : null,
     kicked : null
 };
 
@@ -93,6 +95,9 @@ function initLoginFunctions() {
     socketFunctions.player_list_response = function(msg) {};
     socketFunctions.message_list_response = function(msg) {};
     socketFunctions.message_post = function(msg) {};
+    socketFunctions.initiate_snake = function(msg) {};
+    socketFunctions.snake_update = function(msg) {};
+    socketFunctions.uninitiate_snake = function(msg) {};
     socketFunctions.private_message = function(msg) {};
     socketFunctions.kicked = function(msg) {};
 }
@@ -108,6 +113,9 @@ function initSockets() {
     socket.on('message_list_response', function(msg) {socketFunctions.message_list_response(msg);});
     socket.on('message_post', function(msg) {socketFunctions.message_post(msg);});
     socket.on('private_message', function(msg) {socketFunctions.private_message(msg);});
+    socket.on('initiate_snake', function(msg) {socketFunctions.initiate_snake(msg);});
+    socket.on('snake_update', function(msg) {socketFunctions.snake_update(msg);});
+    socket.on('uninitiate_snake', function(msg) {socketFunctions.uninitiate_snake(msg);});
     socket.on('kicked', function(msg) {socketFunctions.kicked(msg);});
     initLoginFunctions();
 }
@@ -155,6 +163,12 @@ function initGameFunctions() {
         messages[msg.username].color = 'black';
         drawGame();
     };
+    socketFunctions.initiate_snake = function(msg) {
+        initiateSnake(msg);
+        initiateSnakeControls();
+    };
+    socketFunctions.snake_update = function(msg) {};
+    socketFunctions.uninitiate_snake = function(msg) {};
     socketFunctions.private_message = function(msg) {
         var newMessage = element('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg.sender;
@@ -178,9 +192,37 @@ function initGameFunctions() {
         messages = {};
         players = {};
         currentMessageBox = 'global';
-        window.onkeydown = keyDownHandler;
-        window.onkeyup = keyUpHandler;
+        window.onkeydown = null;
+        window.onkeyup = null;
     };
+}
+
+function initiateSnake(msg) {
+    socketFunctions.login_response = function(msg) {};
+    socketFunctions.open_name_response = function(msg) {};
+    socketFunctions.register_response = function(msg) {};
+    socketFunctions.player_addition = function(msg) {};
+    socketFunctions.player_removal  = function(msg) {};
+    socketFunctions.player_list_response = function(msg) {};
+    socketFunctions.message_list_response = function(msg) {};
+    socketFunctions.message_post = function(msg) {};
+    socketFunctions.initiate_snake = function(msg) {};
+    socketFunctions.snake_update = function(msg) {
+        snakeDraw(msg);
+    };
+    socketFunctions.uninitiate_snake = function(msg) {
+        gameInit();
+    };
+    socketFunctions.private_message = function(msg) {};
+    socketFunctions.kicked = function(msg) {};
+}
+
+function initiateSnakeControls() {
+    window.onkeyup = null;
+    window.onkeydown = snakeHandler;
+    element('message-input').onfocus = null;
+    element('message-input').onblur = null;
+    chatBoxUninitialize();
 }
 
 function gameInit() {
@@ -375,6 +417,28 @@ function drawGame() {
             ctx.fillText(messages[key].message, players[key].posx + 10, players[key].posy - 10, 200);
         }
     }
+}
+
+function snakeDraw(msg) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.beginPath();
+    ctx.rect(20, 20, canvas.width - 40, canvas.height - 40);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    ctx.closePath();
+    for (var i = 0; i < msg.snake.length; i++) {
+        ctx.beginPath();
+        ctx.rect(msg.snake[i].posx * 20, msg.snake[i].posy * 20, 20, 20);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.beginPath();
+    ctx.rect(msg.snack.posx * 20, msg.snack.posy * 20, 20, 20);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.closePath();
+
 }
 
 function chatBoxInitialize() {
@@ -606,4 +670,21 @@ function creationClickHandler(evt) {
         relativeY >= 220 && relativeY <= 260) {
         registerCreation();
     }
+}
+
+function snakeHandler(evt) {
+    var direction = null;
+    if (evt.keyCode == 38 || evt.keyCode == 87) {
+        direction = 'up';
+    }
+    else if (evt.keyCode == 37 || evt.keyCode == 65) {
+        direction = 'left';
+    }
+    else if (evt.keyCode == 39 || evt.keyCode == 68) {
+        direction = 'right';
+    }
+    else if (evt.keyCode == 40 || evt.keyCode == 83) {
+        direction = 'down';
+    }
+    socket.emit('snake_direction_update', direction);
 }

@@ -4,6 +4,8 @@ var database = require(__dirname + '/database.js').sequelize;
 database.sync();
 
 var clients = {};
+var snakeGame = {};
+var snakePlayers = {};
 
 function as_array(record) {
     return {
@@ -103,7 +105,7 @@ module.exports.player_list_request = function(socket) {
 
 module.exports.message_post = function(io, socket, msg) {
     if (msg.charAt(0) === '/') {
-        command(socket.handshake.session.userdata, msg.split(' '), io);
+        command(socket.handshake.session.userdata, msg.split(' '), io, socket);
     }
     else {
         var message = {
@@ -195,7 +197,103 @@ module.exports.updating = function(socket) {
         module.exports.player_list_request(socket);
 }
 
-function command(user, param, io) {
+function block(posx, posy) {
+    this.posx = posx;
+    this.posy = posy;
+}
+
+function snake_game_initiate(socket) {
+    snakePlayers[socket.handshake.session.userdata] = {
+        snake : null,
+        snack : new block(10, 10),
+        direction : null
+    };
+    snakePlayers[socket.handshake.session.userdata].snake = [];
+    snakePlayers[socket.handshake.session.userdata].snake.push(new block(1, 1));
+    socket.emit('initiate_snake', '');
+    snakeGame[socket.handshake.session.userdata] = setInterval(snake_action, 100,
+    socket, socket.handshake.session.userdata);
+}
+
+function snake_action(socket, player) {
+    var done = false;
+    if (snakePlayers[player].direction) {
+        if (snakePlayers[player].direction === 'up')
+            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx, snakePlayers[player].snake[0].posy - 1));
+        else if (snakePlayers[player].direction === 'right')
+            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx + 1, snakePlayers[player].snake[0].posy));
+        else if (snakePlayers[player].direction === 'down')
+            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx, snakePlayers[player].snake[0].posy + 1));
+        else if (snakePlayers[player].direction === 'left')
+            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx - 1, snakePlayers[player].snake[0].posy));
+    }
+    for (var i = 1; i < snakePlayers[player].snake.length; i++) {
+        if (snakePlayers[player].snake[0].posx === snakePlayers[player].snake[i].posx &&
+            snakePlayers[player].snake[0].posy === snakePlayers[player].snake[i].posy) {
+            done = true;
+        }
+    }
+    if (snakePlayers[player].snake[0].posx < 1 || snakePlayers[player].snake[0].posx > 34 ||
+        snakePlayers[player].snake[0].posy < 1 || snakePlayers[player].snake[0].posy > 22)
+        done = true;
+    if (snakePlayers[player].snake.length === 864)
+        done = true;
+    if (!done) {
+        if (snakePlayers[player].direction) {
+            if (snakePlayers[player].snake[0].posx !== snakePlayers[player].snack.posx ||
+                snakePlayers[player].snake[0].posy !== snakePlayers[player].snack.posy) {
+                snakePlayers[player].snake.pop();
+            }
+            else {
+                var snackPlaced = false;
+                while (!snackPlaced) {
+                    var newSnack = new block(
+                        Math.floor((Math.random() * 33) + 1),
+                        Math.floor((Math.random() * 21) + 1)
+                    );
+                    for (var i = 0; i < snakePlayers[player].snake.length && !snackPlaced; i++) {
+                        if (newSnack.posx !== snakePlayers[player].snake[i].posx &&
+                            newSnack.posy !== snakePlayers[player].snake[i].posy) {
+                                snakePlayers[player].snack = newSnack;
+                                snackPlaced = true;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (done || !(player in clients)) {
+        clearInterval(snakeGame[player]);
+        delete snakeGame[player];
+        socket.emit('uninitiate_snake', '');
+    }
+    else {
+        var message = {
+            snake : snakePlayers[player].snake,
+            snack : snakePlayers[player].snack
+        };
+        socket.emit('snake_update', message);
+    }
+}
+
+module.exports.snake_direction_update = function(socket, msg) {
+    if (snakePlayers[socket.handshake.session.userdata].direction === 'left' && msg !== 'right') {
+        snakePlayers[socket.handshake.session.userdata].direction = msg;
+    }
+    else if (snakePlayers[socket.handshake.session.userdata].direction === 'up' && msg !== 'down') {
+        snakePlayers[socket.handshake.session.userdata].direction = msg;
+    }
+    else if (snakePlayers[socket.handshake.session.userdata].direction === 'right' && msg !== 'left') {
+        snakePlayers[socket.handshake.session.userdata].direction = msg;
+    }
+    else if (snakePlayers[socket.handshake.session.userdata].direction === 'down' && msg !== 'up') {
+        snakePlayers[socket.handshake.session.userdata].direction = msg;
+    }
+    else if (!snakePlayers[socket.handshake.session.userdata].direction)
+        snakePlayers[socket.handshake.session.userdata].direction = msg;
+}
+
+function command(user, param, io, socket) {
     if (clients[user].record.admin) {
         if (param[0] === '/kick') {
             if (param[1] in clients) {
@@ -207,6 +305,9 @@ function command(user, param, io) {
             }
         }
     }
+    if (param[0] === '/snake')
+        snake_game_initiate(socket);
+
 }
 setInterval(function() {
     for (var key in clients)

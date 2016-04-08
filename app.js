@@ -44,7 +44,10 @@ io.on('connection', function(socket) {
     });
     socket.on('message_list_request', function(msg) {
         controller.message_list_request(socket);
-    })
+    });
+    socket.on('snake_direction_update', function(msg) {
+        controller.snake_direction_update(socket, msg);
+    });
     socket.on('disconnect', function(msg) {
         console.log('a user has disconnected');
         controller.client_removal(socket);
