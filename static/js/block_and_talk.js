@@ -24,7 +24,15 @@ var socketFunctions = {
     snake_update : null,
     kicked : null
 };
+var snakeGameList = {};
 
+
+/*
+*
+*    Initiates the app on load, creates the canvas
+*    initiates the sockets, and draws the login menu
+*
+*/
 window.onload = function() {
     canvas = element('myCanvas');
     ctx = canvas.getContext('2d');
@@ -32,6 +40,14 @@ window.onload = function() {
     loginMenu();
 }
 
+/*
+*
+*    Draws the login menu for the game, as well as
+*    adding event listeners to register user clicks
+*    as well as registering the submission boxes for
+*    logging in and registering
+*
+*/
 function loginMenu() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -69,6 +85,13 @@ function loginMenu() {
     element('register').onsubmit = registerRequest;
 }
 
+
+/*
+*
+*    Initiates the socket functions for logging in,
+*    removing the uncessary ones temporarily
+*
+*/
 function initLoginFunctions() {
     socketFunctions.login_response = function(msg) {
         if (msg)
@@ -102,6 +125,14 @@ function initLoginFunctions() {
     socketFunctions.kicked = function(msg) {};
 }
 
+
+/*
+*
+*    Initiates all of the socket functions, assigning each of them a
+*    function corresponding with their function in the socketFunctions
+*    object
+*
+*/
 function initSockets() {
     socket = io();
     socket.on('login_response', function(msg) {socketFunctions.login_response(msg);});
@@ -120,6 +151,16 @@ function initSockets() {
     initLoginFunctions();
 }
 
+
+/*
+*
+*
+*    Initiates all of the socket functions that the
+*    actual game uses. This also includes temporarily
+*    nilling the functions that are unnecessary for the
+*    game
+*
+*/
 function initGameFunctions() {
     socketFunctions.login_response = function(msg) {};
     socketFunctions.open_name_response = function(msg) {};
@@ -164,7 +205,8 @@ function initGameFunctions() {
         drawGame();
     };
     socketFunctions.initiate_snake = function(msg) {
-        initiateSnake(msg);
+        snakeGameList = msg;
+        initiateSnake();
         initiateSnakeControls();
     };
     socketFunctions.snake_update = function(msg) {};
@@ -197,6 +239,15 @@ function initGameFunctions() {
     };
 }
 
+/*
+*
+*
+*    Initiates all of the socket functions that the
+*    snake minigame needs, as well as nulling all
+*    the socket functions the snake game doesn't
+*    need.
+*
+*/
 function initiateSnake(msg) {
     socketFunctions.login_response = function(msg) {};
     socketFunctions.open_name_response = function(msg) {};
@@ -217,6 +268,15 @@ function initiateSnake(msg) {
     socketFunctions.kicked = function(msg) {};
 }
 
+
+/*
+*
+*
+*    Initiates the controls for the snake minigame,
+*    setting the on key event to their proper handlers,
+*    as well as unititializing the chat box while playing
+*
+*/
 function initiateSnakeControls() {
     window.onkeyup = null;
     window.onkeydown = snakeHandler;
@@ -225,6 +285,16 @@ function initiateSnakeControls() {
     chatBoxUninitialize();
 }
 
+
+/*
+*
+*
+*    Initiates the controls for the actual game,
+*    initiating its functions as well as opening
+*    the chat box and creating key handlers for
+*    moving around
+*
+*/
 function gameInit() {
     initGameFunctions();
     chatBoxInitialize();
@@ -420,9 +490,9 @@ function drawGame() {
 }
 
 function snakeDraw(msg) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.height, canvas.height);
     ctx.beginPath();
-    ctx.rect(20, 20, canvas.width - 40, canvas.height - 40);
+    ctx.rect(20, 20, canvas.height - 40, canvas.height - 40);
     ctx.fillStyle = 'white';
     ctx.fill();
     ctx.closePath();
@@ -439,6 +509,22 @@ function snakeDraw(msg) {
     ctx.fill();
     ctx.closePath();
 
+    ctx.rect(canvas.height, 20, canvas.width - canvas.height - 20, canvas.height - 40);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.closePath();
+
+    for (var i = 0; i < snakeGameList.length; i++) {
+        ctx.font = '20px Helvetica';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'black';
+        ctx.fillText(snakeGameList[i].score + ' ' + snakeGameList[i].username,
+                     canvas.height + 20, 50 + (22 * i));
+    }
+    ctx.font = '20px Helvetica';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'black';
+    ctx.fillText("Score: " + msg.snake.length, canvas.height + 4, canvas.height - 30);
 }
 
 function chatBoxInitialize() {

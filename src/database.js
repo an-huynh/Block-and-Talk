@@ -20,3 +20,8 @@ module.exports.user = module.exports.sequelize.define('user', {
     shape    : Sequelize.STRING,
     admin    : Sequelize.BOOLEAN
 });
+
+module.exports.snakeScore = module.exports.sequelize.define('snakeScore', {
+    username: Sequelize.STRING,
+    score   : Sequelize.INTEGER
+});

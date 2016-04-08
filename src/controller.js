@@ -1,5 +1,6 @@
 var model = require(__dirname + '/database.js').user;
 var database = require(__dirname + '/database.js').sequelize;
+var snakeScore = require(__dirname + '/database.js').snakeScore;
 
 database.sync();
 
@@ -14,6 +15,13 @@ function as_array(record) {
         shape    : record.shape,
         posx     : record.posx,
         posy     : record.posy
+    };
+}
+
+function snakeListAsArray(record) {
+    return {
+        username : record.username,
+        score    : record.score
     };
 }
 
@@ -79,7 +87,8 @@ module.exports.open_name_request = function(socket, msg) {
 }
 
 module.exports.direction_update = function(socket, msg) {
-    clients[socket.handshake.session.userdata].direction = msg;
+    if (socket.handshake.session.userdata in clients)
+        clients[socket.handshake.session.userdata].direction = msg;
 }
 
 function client_addition(socket, record) {
@@ -203,16 +212,25 @@ function block(posx, posy) {
 }
 
 function snake_game_initiate(socket) {
-    snakePlayers[socket.handshake.session.userdata] = {
-        snake : null,
-        snack : new block(10, 10),
-        direction : null
-    };
-    snakePlayers[socket.handshake.session.userdata].snake = [];
-    snakePlayers[socket.handshake.session.userdata].snake.push(new block(1, 1));
-    socket.emit('initiate_snake', '');
-    snakeGame[socket.handshake.session.userdata] = setInterval(snake_action, 100,
-    socket, socket.handshake.session.userdata);
+    snakeScore.findAll({
+        limit : 10,
+        order : '"score" DESC'
+    }).then(function(users) {
+        var list = [];
+        users.forEach(function(user) {
+            list.push(snakeListAsArray(user));
+        });
+        snakePlayers[socket.handshake.session.userdata] = {
+            snake : null,
+            snack : new block(10, 10),
+            direction : null
+        };
+        snakePlayers[socket.handshake.session.userdata].snake = [];
+        snakePlayers[socket.handshake.session.userdata].snake.push(new block(1, 1));
+        socket.emit('initiate_snake', list);
+        snakeGame[socket.handshake.session.userdata] = setInterval(snake_action, 100,
+        socket, socket.handshake.session.userdata);
+    });
 }
 
 function snake_action(socket, player) {
@@ -233,10 +251,10 @@ function snake_action(socket, player) {
             done = true;
         }
     }
-    if (snakePlayers[player].snake[0].posx < 1 || snakePlayers[player].snake[0].posx > 34 ||
+    if (snakePlayers[player].snake[0].posx < 1 || snakePlayers[player].snake[0].posx > 22 ||
         snakePlayers[player].snake[0].posy < 1 || snakePlayers[player].snake[0].posy > 22)
         done = true;
-    if (snakePlayers[player].snake.length === 864)
+    if (snakePlayers[player].snake.length === 484)
         done = true;
     if (!done) {
         if (snakePlayers[player].direction) {
@@ -248,7 +266,7 @@ function snake_action(socket, player) {
                 var snackPlaced = false;
                 while (!snackPlaced) {
                     var newSnack = new block(
-                        Math.floor((Math.random() * 33) + 1),
+                        Math.floor((Math.random() * 21) + 1),
                         Math.floor((Math.random() * 21) + 1)
                     );
                     for (var i = 0; i < snakePlayers[player].snake.length && !snackPlaced; i++) {
@@ -263,6 +281,10 @@ function snake_action(socket, player) {
         }
     }
     if (done || !(player in clients)) {
+        snakeScore.create({
+            username : player,
+            score    : snakePlayers[player].snake.length
+        });
         clearInterval(snakeGame[player]);
         delete snakeGame[player];
         socket.emit('uninitiate_snake', '');
@@ -270,7 +292,7 @@ function snake_action(socket, player) {
     else {
         var message = {
             snake : snakePlayers[player].snake,
-            snack : snakePlayers[player].snack
+            snack : snakePlayers[player].snack,
         };
         socket.emit('snake_update', message);
     }
