@@ -164,6 +164,7 @@ function initGameFunctions() {
         if (element('chat-messages-player-' + msg)) {
             element('chat-box').removeChild(element('chat-messages-player-' + msg));
             element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
+            element('playerlist-box').removeChild(element('playerlist-' + msg));
         }
         if (currentChatGroup === msg) {
             currentChatGroup = 'global';
@@ -300,6 +301,11 @@ function playerAddition(name) {
     messageBox.id = 'chat-messages-player-' + name;
     messageBox.style.display = 'none';
     element('chat-box').appendChild(messageBox);
+    
+    var playerlistBox = document.createElement('ul');
+    playerlistBox.id = 'playerlist-' + name;
+    playerlistBox.textContent = name;
+    element('playerlist-box').appendChild(playerlistBox);
 
     var dropDown = document.createElement('option');
     dropDown.value = 'a' + name;
@@ -522,6 +528,7 @@ function chatBoxInitialize() {
     element('chat-box-dropdown').style.display = 'block';
     element('chat-box').style.display = 'block';
     element('message-form').style.display = 'block';
+    element('playerlist-box').style.display = 'block';
 
     element('message-form').onsubmit = messagePost;
     element('message-input').onfocus = writing;
@@ -535,6 +542,7 @@ function chatBoxUninitialize() {
     element('chat-box-dropdown').style.display = 'none';
     element('chat-box').style.display = 'none';
     element('message-form').style.display = 'none';
+    element('playerlist_box').style.display = 'none';
 }
 
 function chatBoxChanger() {

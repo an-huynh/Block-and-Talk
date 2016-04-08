@@ -41,11 +41,16 @@
                     <tr><td></td><td><input type='submit' value='submit'></td></tr>
                 </table>
             </form>
+        
+        <div id='chat-box'>
+            <ul class='messages' id='global-chat-messages'></ul>
         <select name='chat-box-session' id='chat-box-dropdown'>
             <option value='global'>global</option>
         </select>
-        <div id='chat-box'>
-            <ul class='messages' id='global-chat-messages'></ul>
+        </div>
+        <div id='playerlist-box'>
+            <ul class='players' id='global-chat-players'></ul>
+            <b>Online</b>
         </div>
         <form id='message-form'>
             <input type='test' id='message-input' autocomplete='off'>
