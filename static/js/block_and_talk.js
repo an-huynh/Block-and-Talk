@@ -25,6 +25,13 @@ var socketFunctions = {
     kicked : null
 };
 
+
+/*
+*
+*    Initiates the app on load, creates the canvas
+*    initiates the sockets, and draws the login menu
+*
+*/
 window.onload = function() {
     canvas = element('myCanvas');
     ctx = canvas.getContext('2d');
@@ -32,6 +39,14 @@ window.onload = function() {
     loginMenu();
 }
 
+/*
+*
+*    Draws the login menu for the game, as well as
+*    adding event listeners to register user clicks
+*    as well as registering the submission boxes for
+*    logging in and registering
+*
+*/
 function loginMenu() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -69,6 +84,13 @@ function loginMenu() {
     element('register').onsubmit = registerRequest;
 }
 
+
+/*
+*
+*    Initiates the socket functions for logging in,
+*    removing the uncessary ones temporarily
+*
+*/
 function initLoginFunctions() {
     socketFunctions.login_response = function(msg) {
         if (msg)
@@ -102,6 +124,14 @@ function initLoginFunctions() {
     socketFunctions.kicked = function(msg) {};
 }
 
+
+/*
+*
+*    Initiates all of the socket functions, assigning each of them a
+*    function corresponding with their function in the socketFunctions
+*    object
+*
+*/
 function initSockets() {
     socket = io();
     socket.on('login_response', function(msg) {socketFunctions.login_response(msg);});
@@ -120,6 +150,16 @@ function initSockets() {
     initLoginFunctions();
 }
 
+
+/*
+*
+*
+*    Initiates all of the socket functions that the
+*    actual game uses. This also includes temporarily
+*    nilling the functions that are unnecessary for the
+*    game
+*
+*/
 function initGameFunctions() {
     socketFunctions.login_response = function(msg) {};
     socketFunctions.open_name_response = function(msg) {};
@@ -197,6 +237,16 @@ function initGameFunctions() {
     };
 }
 
+
+/*
+*
+*
+*    Initiates all of the socket functions that the
+*    snake minigame needs, as well as nulling all
+*    the socket functions the snake game doesn't
+*    need.
+*
+*/
 function initiateSnake(msg) {
     socketFunctions.login_response = function(msg) {};
     socketFunctions.open_name_response = function(msg) {};
@@ -217,6 +267,15 @@ function initiateSnake(msg) {
     socketFunctions.kicked = function(msg) {};
 }
 
+
+/*
+*
+*
+*    Initiates the controls for the snake minigame,
+*    setting the on key event to their proper handlers,
+*    as well as unititializing the chat box while playing
+*
+*/
 function initiateSnakeControls() {
     window.onkeyup = null;
     window.onkeydown = snakeHandler;
@@ -225,6 +284,16 @@ function initiateSnakeControls() {
     chatBoxUninitialize();
 }
 
+
+/*
+*
+*
+*    Initiates the controls for the actual game,
+*    initiating its functions as well as opening
+*    the chat box and creating key handlers for
+*    moving around
+*
+*/
 function gameInit() {
     initGameFunctions();
     chatBoxInitialize();
@@ -441,7 +510,7 @@ function snakeDraw(msg) {
     ctx.font = '20px Helvetica';
     ctx.textAlign = 'left';
     ctx.fillStyle = 'black';
-    ctx.fillText("Score: " + msg.snake.length, 30, canvas.height - 30);
+    ctx.fillText("Score: " + msg.snake.length-1, 30, canvas.height - 30);
 
 }
 
