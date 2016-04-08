@@ -438,6 +438,10 @@ function snakeDraw(msg) {
     ctx.fillStyle = 'blue';
     ctx.fill();
     ctx.closePath();
+    ctx.font = '20px Helvetica';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'black';
+    ctx.fillText("Score: " + msg.snake.length, 30, canvas.height - 30);
 
 }
 
