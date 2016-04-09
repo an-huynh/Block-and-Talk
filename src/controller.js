@@ -330,7 +330,7 @@ function snake_action(socket, player) {
     if (done || !(player in clients)) {
         snakeScore.create({
             username : player,
-            score    : snakePlayers[player].snake.length - 1,
+            score    : snakePlayers[player].snake.length - 2,
         });
         clearInterval(snakeGame[player]);
         delete snakeGame[player];
