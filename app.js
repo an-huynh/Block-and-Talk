@@ -48,6 +48,9 @@ io.on('connection', function(socket) {
     socket.on('snake_direction_update', function(msg) {
         controller.snake_direction_update(socket, msg);
     });
+    socket.on('rps_update', function(msg) {
+        controller.rps_update(socket, msg);
+    });
     socket.on('disconnect', function(msg) {
         console.log('a user has disconnected');
         controller.client_removal(socket);

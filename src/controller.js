@@ -99,6 +99,11 @@ function client_addition(socket, record) {
 
 module.exports.client_removal = function(socket) {
     if (socket.handshake.session.userdata) {
+        if (socket.handshake.session.userdata in rpsChallenge) {
+            if (rpsChallenge[rpsChallenge[socket.handshake.session.userdata]] === socket.handshake.session.userdata) {
+                socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.userdata]].socketID).emit('rps_result', 'won');
+            }
+        }
         if (socket.handshake.session.userdata in clients) {
             clients[socket.handshake.session.userdata].record.save();
             socket.broadcast.emit('player_removal', socket.handshake.session.userdata);
@@ -141,7 +146,7 @@ module.exports.message_list_request = function(socket) {
     var response = [];
     for (var key in clients)
         response.push(key);
-    var index = response.indexOf(socket.handshake.session.username);
+    var index = response.indexOf(socket.handshake.session.userdata);
     response.splice(index, 1);
     socket.emit('message_list_response', response);
 }
@@ -218,39 +223,47 @@ function rps_game_init(socket, target) {
     socket.broadcast.to(clients[target].socketID).emit('rps_invite', socket.handshake.session.userdata);
 }
 
-function rpsUpdate(socket, msg) {
+module.exports.rps_update = function(socket, msg) {
     rpsGame[socket.handshake.session.userdata] = msg;
     if (rpsGame[rpsChallenge[socket.handshake.session.userdata]]) {
-        var player1 = socket.handshake.session.userdata;
-        var player2 = rpsChallenge[socket.handshake.session.userdata];
+        console.log(rpsChallenge[socket.handshake.session.userdata]);
+        var player1Choice = rpsGame[socket.handshake.session.userdata];
+        var player2Choice = rpsGame[rpsChallenge[socket.handshake.session.userdata]];
+        console.log(player1Choice + ' ' + player2Choice);
         var result;
-        if (rpsGame[player1] === rpsGame[player2])
+        if (player1Choice && player2Choice && player1Choice === player2Choice)
             result = 'tied';
-        else if (rpsGame[player1] === 'rock' && rpsGame[player2] === 'scissors')
+        else if (player1Choice === 'Rock' && player2Choice === 'Scissors')
             result = 'won';
-        else if (rpsGame[player1] === 'scissors' && rpsGame[player2] === 'paper')
+        else if (player1Choice === 'Scissors' && player2Choice === 'Paper')
             result = 'won';
-        else if (rpsGame[player1] === 'paper' && rpsGame[player2] === 'rock')
+        else if (player1Choice === 'Paper' && player2Choice === 'Rock')
             result = 'won';
-        else if (rpsGame[player1] === 'rock' && rpsGame[player2] === 'paper')
+        else if (player1Choice === 'Rock' && player2Choice === 'Paper')
             result = 'lost';
-        else if (rpsGame[player1] === 'scissors' && rpsGame[player2] === 'rock')
+        else if (player1Choice === 'Scissors' && player2Choice === 'Rock')
             result = 'lost';
-        else if (rpsGame[player1] === 'paper' && rpsGame[player2] === 'scissors')
+        else if (player1Choice === 'Paper' && player2Choice === 'Scissors')
             result = 'lost';
         if (result === 'won') {
-            // emit won
+            socket.emit('rps_result', result);
+            socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.userdata]].socketID).emit(
+                'rps_result', 'lost');
         }
         else if (result === 'lost') {
-            // emit lost
+            socket.emit('rps_result', result);
+            socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.userdata]].socketID).emit(
+                'rps_result', 'won');
         }
         else {
-            //emit tied
+            socket.emit('rps_result', result);
+            socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.userdata]].socketID).emit(
+                'rps_result', 'tied');
         }
         delete rpsGame[socket.handshake.session.userdata];
         delete rpsGame[rpsChallenge[socket.handshake.session.userdata]];
         delete rpsChallenge[rpsChallenge[socket.handshake.session.userdata]];
-        delete rpsChallenge[socket.handshake.sesssion.userdata];
+        delete rpsChallenge[socket.handshake.session.userdata];
     }
 }
 
@@ -417,8 +430,8 @@ function command(user, param, io, socket) {
     else if (param[0] === '/rpsaccept') {
         if (param[1] in rpsChallenge && rpsChallenge[param[1]] === socket.handshake.session.userdata) {
             rpsChallenge[socket.handshake.session.userdata] = param[1];
-            socket.emit('initiate_rps', '');
-            socket.broadcast.to(clients[param[1]]).emit('initiate_rps', '');
+            socket.emit('rps_initiate', '');
+            socket.broadcast.to(clients[param[1]].socketID).emit('rps_initiate', '');
         }
     }
 }

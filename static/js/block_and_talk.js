@@ -23,9 +23,12 @@ var socketFunctions = {
     initiate_snake : null,
     snake_update : null,
     kicked : null,
-    rps_invite : null
+    rps_invite : null,
+    rps_initiate : null,
+    rps_result : null
 };
 var snakeGameList = {};
+var rpsSelected = null;
 
 
 /*
@@ -37,6 +40,7 @@ window.onload = function() {
     ctx = canvas.getContext('2d');
     initSockets();
     loginMenu();
+    initLoginFunctions();
 }
 
 /*
@@ -120,6 +124,8 @@ function initLoginFunctions() {
     socketFunctions.private_message = function(msg) {};
     socketFunctions.kicked = function(msg) {};
     socketFunctions.rps_invite = function(msg) {};
+    socketFunctions.rps_initiate = function(msg) {};
+    socketFunctions.rps_result = function(msg) {};
 }
 
 
@@ -144,7 +150,8 @@ function initSockets() {
     socket.on('uninitiate_snake', function(msg) {socketFunctions.uninitiate_snake(msg);});
     socket.on('kicked', function(msg) {socketFunctions.kicked(msg);});
     socket.on('rps_invite', function(msg) {socketFunctions.rps_invite(msg);});
-    initLoginFunctions();
+    socket.on('rps_initiate', function(msg) {socketFunctions.rps_initiate(msg);});
+    socket.on('rps_result', function(msg) {socketFunctions.rps_result(msg);});
 }
 
 
@@ -182,8 +189,11 @@ function initGameFunctions() {
         drawGame();
     };
     socketFunctions.message_list_response = function(msg) {
-        for (var i = 0; i < msg.length; i++)
-            playerAddition(msg[i]);
+        for (var i = 0; i < msg.length; i++) {
+            if (!document.querySelector('#chat-messages-player-' + msg[i])){
+                playerAddition(msg[i]);
+            }
+        }
     };
     socketFunctions.message_post = function(msg) {
         var newMessage = element('message-template').content.cloneNode(true);
@@ -238,7 +248,14 @@ function initGameFunctions() {
             ' has invited you to play rock paper scissors. to accept, type /rpsaccept ' + msg;
         element('global-chat-messages').appendChild(newMessage);
         element('chat-box').scrollTop = element('chat-box').scrollHeight;
-    }
+    };
+    socketFunctions.rps_initiate = function(msg) {
+        initiateRPS();
+        initiateRPSControls();
+        rpsSelected = null;
+        drawRPS();
+    };
+    socketFunctions.rps_result = function(msg) {};
 }
 
 /*
@@ -248,14 +265,7 @@ function initGameFunctions() {
 *    need.
 */
 function initiateSnake(msg) {
-    socketFunctions.login_response = function(msg) {};
-    socketFunctions.open_name_response = function(msg) {};
-    socketFunctions.register_response = function(msg) {};
-    socketFunctions.player_addition = function(msg) {};
-    socketFunctions.player_removal  = function(msg) {};
     socketFunctions.player_list_response = function(msg) {};
-    socketFunctions.message_list_response = function(msg) {};
-    socketFunctions.message_post = function(msg) {};
     socketFunctions.initiate_snake = function(msg) {};
     socketFunctions.snake_update = function(msg) {
         snakeDraw(msg);
@@ -263,10 +273,25 @@ function initiateSnake(msg) {
     socketFunctions.uninitiate_snake = function(msg) {
         gameInit();
     };
-    socketFunctions.private_message = function(msg) {};
     socketFunctions.kicked = function(msg) {};
+    socketFunctions.rps_invite = function(msg) {};
+    socketFunctions.rps_initiate = function(msg) {};
+    socketFunctions.rps_result = function(msg) {};
 }
 
+function initiateRPS() {
+    socketFunctions.player_list_response = function(msg) {};
+    socketFunctions.initiate_snake = function(msg) {};
+    socketFunctions.snake_update = function(msg) {};
+    socketFunctions.uninitiate_snake = function(msg) {};
+    socketFunctions.kicked = function(msg) {};
+    socketFunctions.rps_invite = function(msg) {};
+    socketFunctions.rps_initiate = function(msg) {};
+    socketFunctions.rps_result = function(msg) {
+        drawRPSResult(msg);
+        window.onclick = rpsExitHandler;
+    };
+}
 
 /*
 *    Initiates the controls for the snake minigame,
@@ -281,6 +306,14 @@ function initiateSnakeControls() {
     chatBoxUninitialize();
 }
 
+function initiateRPSControls() {
+    window.onkeyup = null;
+    window.onkeydown = null;
+    window.onclick = rpsHandler;
+    element('message-input').onfocus = null;
+    element('message-input').onblur = null;
+    chatBoxUninitialize();
+}
 
 /*
 *    Initiates the controls for the actual game,
@@ -309,7 +342,7 @@ function playerAddition(name) {
     messageBox.id = 'chat-messages-player-' + name;
     messageBox.style.display = 'none';
     element('chat-box').appendChild(messageBox);
-    
+
     var playerlistBox = document.createElement('ul');
     playerlistBox.id = 'playerlist-' + name;
     playerlistBox.textContent = name;
@@ -325,7 +358,7 @@ function playerAddition(name) {
 
 /*
 *    Emits a login request that sends in the
-*    the username and a hashed password to 
+*    the username and a hashed password to
 *    the controller
 */
 function loginRequest() {
@@ -339,7 +372,7 @@ function loginRequest() {
 
 /*
 *    Performs  a register request, which compares the
-*    two typed passwords ensuring they match, and 
+*    two typed passwords ensuring they match, and
 *    if they do it emits a request to check if the name
 *    is open
 */
@@ -516,6 +549,62 @@ function drawGame() {
             ctx.fillText(messages[key].message, players[key].posx + 10, players[key].posy - 10, 200);
         }
     }
+}
+
+function drawRPS(msg) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = '30px helvetica';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'black';
+    ctx.fillText('ROCK, PAPER, SCISSORS', canvas.width / 2, 40);
+
+    ctx.font = '20px Helvetica';
+    ctx.fillStyle = 'blue';
+    if (rpsSelected === 'Rock') {
+        ctx.beginPath();
+        ctx.rect(canvas.width / 2 - 100, 92.5, 200, 30);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.fillStyle = 'blue';
+    ctx.fillText('Rock', canvas.width / 2, 115);
+    if (rpsSelected === 'Paper') {
+        ctx.beginPath();
+        ctx.rect(canvas.width / 2 - 100, 142.5, 200, 30);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.fillStyle = 'blue';
+    ctx.fillText('Paper', canvas.width / 2, 165);
+    if (rpsSelected === 'Scissors') {
+        ctx.beginPath();
+        ctx.rect(canvas.width / 2 - 100, 192.5, 200, 30);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.fillStyle = 'blue';
+    ctx.fillText('Scissors', canvas.width / 2, 215.5);
+}
+
+function drawRPSResult(msg) {
+    ctx.fillStyle = 'black';
+    ctx.font = '40px Helvetica';
+    ctx.fillText('YOU ' + msg + '!', canvas.width / 2, 300);
+
+    ctx.beginPath();
+    ctx.rect(canvas.width / 2 - 50, 350, 100, 30);
+    ctx.fillStyle = 'green';
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.fillStyle = 'black';
+    ctx.font = '20px Helvetica';
+    ctx.fillText('ESCAPE', canvas.width / 2, 372);
+
 }
 
 function snakeDraw(msg) {
@@ -804,4 +893,34 @@ function snakeHandler(evt) {
         direction = 'down';
     }
     socket.emit('snake_direction_update', direction);
+}
+
+function rpsHandler(evt) {
+    var selected = null;
+    var relativeX = evt.clientX - canvas.offsetLeft;
+    var relativeY = evt.clientY - canvas.offsetTop;
+    if (relativeX > canvas.width / 2 - 200 && relativeX < canvas.width / 2 + 200) {
+        if (relativeY >= 92.5 && relativeY <= 122.5)
+            selected = 'Rock';
+        else if (relativeY >= 142.5 && relativeY <= 172.5)
+            selected = 'Paper';
+        else if (relativeY >= 192.5 && relativeY <= 222.5)
+            selected = 'Scissors';
+    }
+    if (selected) {
+        rpsSelected = selected;
+        drawRPS();
+        socket.emit('rps_update', selected);
+    }
+
+}
+
+function rpsExitHandler(evt) {
+    var relativeX = evt.clientX - canvas.offsetLeft;
+    var relativeY = evt.clientY - canvas.offsetTop;
+    if (relativeX >= canvas.width / 2 - 50 && relativeX <= canvas.width / 2 + 50 &&
+        relativeY >= 350 && relativeY <= 380) {
+        gameInit();
+        window.onclick = null;
+    }
 }
