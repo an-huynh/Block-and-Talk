@@ -31,7 +31,9 @@ form {
 }
 
 #playerlist-box {
+    top: -19px;
     display: none;
+    position: relative;
     float: right;
     width: 20%;
     height: 260px;
@@ -107,5 +109,5 @@ form {
     z-index: 1;
     float: right;
     position: relative;
-    right: 0px;
+    right: calc(20% + 17px);
 }
