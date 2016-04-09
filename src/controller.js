@@ -7,6 +7,8 @@ database.sync();
 var clients = {};
 var snakeGame = {};
 var snakePlayers = {};
+var rpsChallenge = {};
+var rpsGame = {};
 
 function as_array(record) {
     return {
@@ -211,6 +213,47 @@ function block(posx, posy) {
     this.posy = posy;
 }
 
+function rps_game_init(socket, target) {
+    rpsChallenge[socket.handshake.session.userdata] = target
+    socket.broadcast.to(clients[target].socketID).emit('rps_invite', socket.handshake.session.userdata);
+}
+
+function rpsUpdate(socket, msg) {
+    rpsGame[socket.handshake.session.userdata] = msg;
+    if (rpsGame[rpsChallenge[socket.handshake.session.userdata]]) {
+        var player1 = socket.handshake.session.userdata;
+        var player2 = rpsChallenge[socket.handshake.session.userdata];
+        var result;
+        if (rpsGame[player1] === rpsGame[player2])
+            result = 'tied';
+        else if (rpsGame[player1] === 'rock' && rpsGame[player2] === 'scissors')
+            result = 'won';
+        else if (rpsGame[player1] === 'scissors' && rpsGame[player2] === 'paper')
+            result = 'won';
+        else if (rpsGame[player1] === 'paper' && rpsGame[player2] === 'rock')
+            result = 'won';
+        else if (rpsGame[player1] === 'rock' && rpsGame[player2] === 'paper')
+            result = 'lost';
+        else if (rpsGame[player1] === 'scissors' && rpsGame[player2] === 'rock')
+            result = 'lost';
+        else if (rpsGame[player1] === 'paper' && rpsGame[player2] === 'scissors')
+            result = 'lost';
+        if (result === 'won') {
+            // emit won
+        }
+        else if (result === 'lost') {
+            // emit lost
+        }
+        else {
+            //emit tied
+        }
+        delete rpsGame[socket.handshake.session.userdata];
+        delete rpsGame[rpsChallenge[socket.handshake.session.userdata]];
+        delete rpsChallenge[rpsChallenge[socket.handshake.session.userdata]];
+        delete rpsChallenge[socket.handshake.sesssion.userdata];
+    }
+}
+
 function snake_game_initiate(socket) {
     snakeScore.findAll({
         limit : 10,
@@ -275,10 +318,10 @@ function snake_action(socket, player) {
                         if (newSnack.posx === snakePlayers[player].snake[i].posx &&
                             newSnack.posy === snakePlayers[player].snake[i].posy)
                             available = false;
-                        if (available) {
-                            snakePlayers[player].snack = newSnack;
-                            snackPlaced = true;
-                        }
+                    }
+                    if (available) {
+                        snakePlayers[player].snack = newSnack;
+                        snackPlaced = true;
                     }
                 }
             }
@@ -287,7 +330,7 @@ function snake_action(socket, player) {
     if (done || !(player in clients)) {
         snakeScore.create({
             username : player,
-            score    : snakePlayers[player].snake.length
+            score    : snakePlayers[player].snake.length - 1,
         });
         clearInterval(snakeGame[player]);
         delete snakeGame[player];
@@ -296,7 +339,7 @@ function snake_action(socket, player) {
     else {
         var message = {
             snake : snakePlayers[player].snake,
-            snack : snakePlayers[player].snack,
+            snack : snakePlayers[player].snack
         };
         socket.emit('snake_update', message);
     }
@@ -366,7 +409,18 @@ function command(user, param, io, socket) {
     }
     else if (param[0] === '/snake')
         snake_game_initiate(socket);
-
+    else if (param[0] === '/rps') {
+        if (param[1] in clients && param[1] !== socket.handshake.session.userdata) {
+            rps_game_init(socket, param[1]);
+        }
+    }
+    else if (param[0] === '/rpsaccept') {
+        if (param[1] in rpsChallenge && rpsChallenge[param[1]] === socket.handshake.session.userdata) {
+            rpsChallenge[socket.handshake.session.userdata] = param[1];
+            socket.emit('initiate_rps', '');
+            socket.broadcast.to(clients[param[1]]).emit('initiate_rps', '');
+        }
+    }
 }
 setInterval(function() {
     for (var key in clients)

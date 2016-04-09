@@ -22,7 +22,8 @@ var socketFunctions = {
     private_message : null,
     initiate_snake : null,
     snake_update : null,
-    kicked : null
+    kicked : null,
+    rps_invite : null
 };
 var snakeGameList = {};
 
@@ -117,6 +118,7 @@ function initLoginFunctions() {
     socketFunctions.uninitiate_snake = function(msg) {};
     socketFunctions.private_message = function(msg) {};
     socketFunctions.kicked = function(msg) {};
+    socketFunctions.rps_invite = function(msg) {};
 }
 
 
@@ -140,6 +142,7 @@ function initSockets() {
     socket.on('snake_update', function(msg) {socketFunctions.snake_update(msg);});
     socket.on('uninitiate_snake', function(msg) {socketFunctions.uninitiate_snake(msg);});
     socket.on('kicked', function(msg) {socketFunctions.kicked(msg);});
+    socket.on('rps_invite', function(msg) {socketFunctions.rps_invite(msg);});
     initLoginFunctions();
 }
 
@@ -226,6 +229,14 @@ function initGameFunctions() {
         window.onkeydown = null;
         window.onkeyup = null;
     };
+    socketFunctions.rps_invite = function(msg) {
+        var newMessage = element('message-template').content.cloneNode(true);
+        newMessage.querySelector('.message-username').textContent = 'GAME';
+        newMessage.querySelector('.message-content').textContent = msg +
+            ' has invited you to play rock paper scissors. to accept, type /rpsaccept ' + msg;
+        element('global-chat-messages').appendChild(newMessage);
+        element('chat-box').scrollTop = element('chat-box').scrollHeight;
+    }
 }
 
 /*
