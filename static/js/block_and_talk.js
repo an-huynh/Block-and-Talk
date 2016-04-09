@@ -51,6 +51,7 @@ function loginMenu() {
     // LARGE LOGO
     ctx.textAlign = 'center';
     ctx.font = '55px Helvetica';
+    ctx.fillStyle = 'black';
     ctx.fillText('Block and Talk', canvas.width / 2, canvas.height / 2);
 
     // LOGIN BUTTON RECTANGLE
@@ -167,6 +168,7 @@ function initGameFunctions() {
         if (element('chat-messages-player-' + msg)) {
             element('chat-box').removeChild(element('chat-messages-player-' + msg));
             element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
+            element('playerlist-box').removeChild(element('playerlist-' + msg));
         }
         if (currentChatGroup === msg) {
             currentChatGroup = 'global';
@@ -240,13 +242,10 @@ function initGameFunctions() {
 }
 
 /*
-*
-*
 *    Initiates all of the socket functions that the
 *    snake minigame needs, as well as nulling all
 *    the socket functions the snake game doesn't
 *    need.
-*
 */
 function initiateSnake(msg) {
     socketFunctions.login_response = function(msg) {};
@@ -270,12 +269,9 @@ function initiateSnake(msg) {
 
 
 /*
-*
-*
 *    Initiates the controls for the snake minigame,
 *    setting the on key event to their proper handlers,
 *    as well as unititializing the chat box while playing
-*
 */
 function initiateSnakeControls() {
     window.onkeyup = null;
@@ -287,13 +283,10 @@ function initiateSnakeControls() {
 
 
 /*
-*
-*
 *    Initiates the controls for the actual game,
 *    initiating its functions as well as opening
 *    the chat box and creating key handlers for
 *    moving around
-*
 */
 function gameInit() {
     initGameFunctions();
@@ -305,12 +298,22 @@ function gameInit() {
     window.onkeyup = keyUpHandler;
 }
 
+/*
+*    Adds the chat box to the client,
+*    as well as adding a user to the drop
+*    box to allow for private messaging
+*/
 function playerAddition(name) {
     var messageBox = document.createElement('ul');
     messageBox.className = 'messages';
     messageBox.id = 'chat-messages-player-' + name;
     messageBox.style.display = 'none';
     element('chat-box').appendChild(messageBox);
+    
+    var playerlistBox = document.createElement('ul');
+    playerlistBox.id = 'playerlist-' + name;
+    playerlistBox.textContent = name;
+    element('playerlist-box').appendChild(playerlistBox);
 
     var dropDown = document.createElement('option');
     dropDown.value = 'a' + name;
@@ -319,6 +322,12 @@ function playerAddition(name) {
     element('chat-box-dropdown').appendChild(dropDown);
 }
 
+
+/*
+*    Emits a login request that sends in the
+*    the username and a hashed password to 
+*    the controller
+*/
 function loginRequest() {
     socket.emit('login_request', {
         username : element('login-username').value,
@@ -327,6 +336,13 @@ function loginRequest() {
     return false;
 }
 
+
+/*
+*    Performs  a register request, which compares the
+*    two typed passwords ensuring they match, and 
+*    if they do it emits a request to check if the name
+*    is open
+*/
 function registerRequest() {
     if (element('register-password1').value === element('register-password2').value)
         socket.emit('open_name_request', element('register-username').value);
@@ -335,6 +351,12 @@ function registerRequest() {
     return false;
 }
 
+
+/*
+*    Initializes customization after the new user is
+*    created. Removes the registration box and draws
+*    the customization canvas.
+*/
 function initRegistration() {
     document.removeEventListener('mousedown', loginMenuHandler, false);
     element('register').style.display = 'none';
@@ -354,6 +376,13 @@ var colors = ['#F0F8FF', '#FAEBD7', '#00FFFF', '#7FFFD4', '#F0FFFF', '#F5F5DC',
               '#00FFFF', '#00008B', '#008B8B', '#B8860B', '#A9A9A9', '#006400',
               '#BDB76B', '#8B008B', '#556B2F', '#FF8C00', '#9932CC', '#8B0000'];
 
+
+/*
+*    Draws the menu for character creation,
+*    including the model of the character as
+*    well as the buttons for change between
+*    shapes and colors
+*/
 function creationMenuDraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.beginPath();
@@ -524,7 +553,7 @@ function snakeDraw(msg) {
     ctx.font = '20px Helvetica';
     ctx.textAlign = 'left';
     ctx.fillStyle = 'black';
-    ctx.fillText("Score: " + msg.snake.length, canvas.height + 4, canvas.height - 30);
+    ctx.fillText("Score: " + (msg.snake.length - 1), canvas.height + 4, canvas.height - 30);
 }
 
 function chatBoxInitialize() {
@@ -533,6 +562,7 @@ function chatBoxInitialize() {
     element('chat-box-dropdown').style.display = 'block';
     element('chat-box').style.display = 'block';
     element('message-form').style.display = 'block';
+    element('playerlist-box').style.display = 'block';
 
     element('message-form').onsubmit = messagePost;
     element('message-input').onfocus = writing;
@@ -546,6 +576,7 @@ function chatBoxUninitialize() {
     element('chat-box-dropdown').style.display = 'none';
     element('chat-box').style.display = 'none';
     element('message-form').style.display = 'none';
+    element('playerlist-box').style.display = 'none';
 }
 
 function chatBoxChanger() {
