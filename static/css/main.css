@@ -40,11 +40,13 @@ form {
     font-size: 13px;
     font-family: helvetica;
     background-color: #7f92a7;
+    overflow-y: auto;
 }
 
 .players {
     padding: 0;
     margin: 0;
+    word-wrap: break-word;
 }
 
 #chat-box {
@@ -110,4 +112,9 @@ form {
     float: right;
     position: relative;
     right: calc(20% + 17px);
+}
+
+#global-chat-players {
+    padding: 0;
+    margin : 0;
 }

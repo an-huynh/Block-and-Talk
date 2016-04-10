@@ -175,7 +175,7 @@ function initGameFunctions() {
         if (element('chat-messages-player-' + msg)) {
             element('chat-box').removeChild(element('chat-messages-player-' + msg));
             element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
-            element('playerlist-box').removeChild(element('playerlist-' + msg));
+            element('global-chat-players').removeChild(element('playerlist-' + msg));
         }
         if (currentChatGroup === msg) {
             currentChatGroup = 'global';
@@ -343,10 +343,11 @@ function playerAddition(name) {
     messageBox.style.display = 'none';
     element('chat-box').appendChild(messageBox);
 
-    var playerlistBox = document.createElement('ul');
-    playerlistBox.id = 'playerlist-' + name;
-    playerlistBox.textContent = name;
-    element('playerlist-box').appendChild(playerlistBox);
+    var newPlayer = document.createElement('section');
+    newPlayer.id = 'playerlist-' + name;
+    newPlayer.className = 'players';
+    newPlayer.textContent = name;
+    element('global-chat-players').appendChild(newPlayer);
 
     var dropDown = document.createElement('option');
     dropDown.value = 'a' + name;

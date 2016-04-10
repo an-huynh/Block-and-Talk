@@ -226,10 +226,8 @@ function rps_game_init(socket, target) {
 module.exports.rps_update = function(socket, msg) {
     rpsGame[socket.handshake.session.userdata] = msg;
     if (rpsGame[rpsChallenge[socket.handshake.session.userdata]]) {
-        console.log(rpsChallenge[socket.handshake.session.userdata]);
         var player1Choice = rpsGame[socket.handshake.session.userdata];
         var player2Choice = rpsGame[rpsChallenge[socket.handshake.session.userdata]];
-        console.log(player1Choice + ' ' + player2Choice);
         var result;
         if (player1Choice && player2Choice && player1Choice === player2Choice)
             result = 'tied';
