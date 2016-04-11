@@ -374,8 +374,8 @@ module.exports.snake_direction_update = function(socket, msg) {
 }
 
 function command(user, param, io, socket) {
-    if (param[0] === '/kick') {
-        if (clients[user].record.admin && param[1] in clients) {
+    if (param[0] === '/kick' && clients[user].record.admin) {
+        if (param[1] in clients) {
             clients[param[1]].record.save();
             io.emit('player_removal', param[1]);
             io.to(clients[param[1]].socketID).emit('kicked', '');
@@ -383,7 +383,7 @@ function command(user, param, io, socket) {
             module.exports.player_list_request(io);
         }
     }
-    else if (param[0] === '/op') {
+    else if (param[0] === '/op' && clients[user].record.admin) {
         if (param[1] in clients)
             clients[param[1]].record.admin = true;
         else {
@@ -397,7 +397,7 @@ function command(user, param, io, socket) {
             });
         }
     }
-    else if (param[0] === '/deop') {
+    else if (param[0] === '/deop' && clients[user].record.admin) {
         if (param[1] in clients)
             clients[param[1]].record.admin = false;
         else {
@@ -422,14 +422,14 @@ function command(user, param, io, socket) {
         snake_game_initiate(socket);
     else if (param[0] === '/rps') {
         if (param[1] in clients && param[1] !== socket.handshake.session.userdata) {
-            rps_game_init(socket, param[1]);
-        }
-    }
-    else if (param[0] === '/rpsaccept') {
-        if (param[1] in rpsChallenge && rpsChallenge[param[1]] === socket.handshake.session.userdata) {
-            rpsChallenge[socket.handshake.session.userdata] = param[1];
-            socket.emit('rps_initiate', '');
-            socket.broadcast.to(clients[param[1]].socketID).emit('rps_initiate', '');
+            if (rpsChallenge[param[1]] === socket.handshake.session.userdata) {
+                rpsChallenge[socket.handshake.session.userdata] = param[1];
+                socket.emit('rps_initiate', '');
+                socket.broadcast.to(clients[param[1]].socketID).emit('rps_initiate', '');
+            }
+            else {
+                rps_game_init(socket, param[1]);
+            }
         }
     }
 }

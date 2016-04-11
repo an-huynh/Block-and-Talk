@@ -245,7 +245,7 @@ function initGameFunctions() {
         var newMessage = element('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = 'GAME';
         newMessage.querySelector('.message-content').textContent = msg +
-            ' has invited you to play rock paper scissors. to accept, type /rpsaccept ' + msg;
+            ' has invited you to play rock paper scissors. to type /rps ' + msg;
         element('global-chat-messages').appendChild(newMessage);
         element('chat-box').scrollTop = element('chat-box').scrollHeight;
     };
