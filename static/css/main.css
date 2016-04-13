@@ -6,6 +6,7 @@ body {
 }
 
 header {
+    font-family: lemon_milk;
     height: 70px;
     line-height: 70px;
     text-align: center;
@@ -119,4 +120,9 @@ form {
 #global-chat-players {
     padding: 0;
     margin : 0;
+}
+
+@font-face {
+    font-family: lemon_milk;
+    src: url('LemonMilk.otf');
 }
