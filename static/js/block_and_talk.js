@@ -55,7 +55,7 @@ function loginMenu() {
 
     // LARGE LOGO
     ctx.textAlign = 'center';
-    ctx.font = '55px Helvetica';
+    ctx.font = '55px Lemon_Milk';
     ctx.fillStyle = 'black';
     ctx.fillText('Block and Talk', canvas.width / 2, canvas.height / 2);
 
