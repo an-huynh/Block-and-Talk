@@ -106,7 +106,7 @@ function initLoginFunctions() {
             initRegistration();
         }
         else
-            alert('Name taken');
+            alert('Name Unavailable');
     };
     socketFunctions.register_response = function(msg) {
         if (msg)
@@ -283,7 +283,6 @@ function initiateSnake(msg) {
         gameInit();
     };
     socketFunctions.kicked = function(msg) {};
-    socketFunctions.rps_invite = function(msg) {};
     socketFunctions.rps_initiate = function(msg) {};
     socketFunctions.rps_result = function(msg) {};
 }
@@ -294,7 +293,6 @@ function initiateRPS() {
     socketFunctions.snake_update = function(msg) {};
     socketFunctions.uninitiate_snake = function(msg) {};
     socketFunctions.kicked = function(msg) {};
-    socketFunctions.rps_invite = function(msg) {};
     socketFunctions.rps_initiate = function(msg) {};
     socketFunctions.rps_result = function(msg) {
         drawRPSResult(msg);

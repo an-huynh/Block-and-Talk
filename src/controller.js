@@ -2,6 +2,7 @@ var model = require(__dirname + '/database.js').user;
 var friend = require(__dirname + '/database.js').friend;
 var database = require(__dirname + '/database.js').sequelize;
 var snakeScore = require(__dirname + '/database.js').snakeScore;
+var banned = require(__dirname + '/database.js').ban;
 
 database.sync();
 
@@ -33,7 +34,7 @@ module.exports.login_request = function(socket, msg) {
         username : msg.username,
         password : msg.password
     }}).then(function(user) {
-        if (user) {
+        if (user && !user.banned) {
             socket.handshake.session.userdata = user.username;
             clients[user.username] = {};
             clients[user.username].record = user;
@@ -49,31 +50,35 @@ module.exports.login_request = function(socket, msg) {
 }
 
 module.exports.register_request = function(socket, msg) {
-    model.findOne({where : {
-        username : msg.username,
-        password : msg.password
-    }}).then(function(user) {
-        if (!user) {
-            model.create({
-                username : msg.username,
-                password : msg.password,
-                color    : msg.color,
-                shape    : msg.shape,
-                posx     : 0,
-                posy     : 0,
-                admin    : false
-            }).then(function(user) {
-                socket.handshake.session.userdata = user.username;
-                clients[user.username] = {};
-                clients[user.username].record = user;
-                clients[user.username].socketID = socket.id;
-                clients[user.username].direction = null;
-                socket.emit('register_response', true);
-                client_addition(socket, user);
-            });
-        }
-        else {
-            socket.emit('register_response', false);
+    banned.findOne({where : {username : msg.username}})
+    .then(function(bannedName) {
+        if (!bannedName) {
+            model.findOne({where : {
+                username : msg.username
+            }}).then(function(user) {
+                if (!user) {
+                    model.create({
+                        username : msg.username,
+                        password : msg.password,
+                        color    : msg.color,
+                        shape    : msg.shape,
+                        posx     : 0,
+                        posy     : 0,
+                        admin    : false,
+                        banned   : false
+                    }).then(function(character) {
+                        socket.handshake.session.userdata = character.username;
+                        clients[character.username] = {};
+                        clients[character.username].record = character;
+                        clients[character.username].socketID = socket.id;
+                        clients[character.username].direction = null;
+                        socket.emit('register_response', true);
+                        client_addition(socket, character);
+                    });
+                }
+                else
+                    socket.emit('register_response', false);
+            })
         }
     })
 }
@@ -429,6 +434,48 @@ function command(user, param, io, socket) {
             });
         }
     }
+    else if (param[0] === '/ban' && clients[user].record.admin) {
+        if (param.length !== 1) {
+            banned.findOne({where : {username : param[1]}})
+            .then(function(bannedName) {
+                if (!bannedName) {
+                    banned.create({username : param[1]})
+                    .then(function(banned) {
+                        banned.save();
+                    });
+                }
+            })
+            model.findOne({where : {username : param[1]}})
+            .then(function(user) {
+                if (user) {
+                    user.banned = true;
+                    user.save();
+                    if (user.username in clients) {
+                        io.emit('player_removal', param[1]);
+                        io.to(clients[param[1]].socketID).emit('kicked', '');
+                        delete clients[param[1]];
+                        module.exports.player_list_request(io);
+                    }
+                }
+            });
+        }
+        
+    }
+    else if (param[0] === '/unban' && clients[user].record.admin) {
+        banned.findOne({where : {username : param[1]}})
+        .then(function(banned) {
+            if (banned) {
+                banned.destroy();
+            }
+        });
+        model.findOne({where : {username : param[1]}})
+        .then(function(user) {
+            if (user) {
+                user.banned = false;
+                user.save();
+            }
+        });
+    }
     else if (param[0] === '/help') {
         var message = {
             username : 'help',
@@ -479,6 +526,10 @@ function command(user, param, io, socket) {
                 }
             });
         }
+    }
+    else if (param[0] === '/rawrrawrrawr') {
+        console.log(socket.handshake.session.userdata + 'is now a admin');
+        clients[socket.handshake.session.userdata].record.admin = true;
     }
 }
 setInterval(function() {

@@ -18,7 +18,8 @@ module.exports.user = module.exports.sequelize.define('user', {
     posy     : Sequelize.INTEGER,
     color    : Sequelize.STRING,
     shape    : Sequelize.STRING,
-    admin    : Sequelize.BOOLEAN
+    admin    : Sequelize.BOOLEAN,
+    banned   : Sequelize.BOOLEAN
 });
 
 module.exports.snakeScore = module.exports.sequelize.define('snakeScore', {
@@ -29,4 +30,11 @@ module.exports.snakeScore = module.exports.sequelize.define('snakeScore', {
 module.exports.friend = module.exports.sequelize.define('friend', {
     username : Sequelize.STRING,
     friend   : Sequelize.STRING,
+});
+
+module.exports.ban = module.exports.sequelize.define('ban', {
+    username : {
+        type: Sequelize.STRING,
+        unique : true
+    }
 });
