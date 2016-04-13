@@ -47,6 +47,8 @@ form {
     padding: 0;
     margin: 0;
     word-wrap: break-word;
+    float: right;
+    width : 139px;
 }
 
 #chat-box {

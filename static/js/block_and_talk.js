@@ -15,6 +15,7 @@ var socketFunctions = {
     open_name_response : null,
     register_response : null,
     player_addition : null,
+    friend_addition : null,
     player_removal : null,
     player_list_response : null,
     message_list_response : null,
@@ -114,6 +115,7 @@ function initLoginFunctions() {
             alert('Something bad happened');
     };
     socketFunctions.player_addition = function(msg) {};
+    socketFunctions.friend_addition = function(msg) {};
     socketFunctions.player_removal  = function(msg) {};
     socketFunctions.player_list_response = function(msg) {};
     socketFunctions.message_list_response = function(msg) {};
@@ -140,6 +142,7 @@ function initSockets() {
     socket.on('open_name_response', function(msg) {socketFunctions.open_name_response(msg);});
     socket.on('register_response', function(msg) {socketFunctions.register_response(msg);});
     socket.on('player_addition', function(msg) {socketFunctions.player_addition(msg);});
+    socket.on('friend_addition', function(msg) {socketFunctions.friend_addition(msg);});
     socket.on('player_removal', function(msg) {socketFunctions.player_removal(msg);});
     socket.on('player_list_response', function(msg) {socketFunctions.player_list_response(msg);});
     socket.on('message_list_response', function(msg) {socketFunctions.message_list_response(msg);});
@@ -170,11 +173,17 @@ function initGameFunctions() {
         players[msg.username] = msg;
         drawGame();
     };
+    socketFunctions.friend_addition = function(msg) {
+        friendAddition(msg);
+    };
     socketFunctions.player_removal = function(msg) {
         delete players.msg;
         if (element('chat-messages-player-' + msg)) {
             element('chat-box').removeChild(element('chat-messages-player-' + msg));
             element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
+            element('global-chat-players').removeChild(element('playerlist-' + msg));
+        }
+        if (element('playerlist-' + msg)) {
             element('global-chat-players').removeChild(element('playerlist-' + msg));
         }
         if (currentChatGroup === msg) {
@@ -190,7 +199,7 @@ function initGameFunctions() {
     };
     socketFunctions.message_list_response = function(msg) {
         for (var i = 0; i < msg.length; i++) {
-            if (!document.querySelector('#chat-messages-player-' + msg[i])){
+            if (!document.querySelector('#playerlist-' + msg[i])){
                 playerAddition(msg[i]);
             }
         }
@@ -293,6 +302,20 @@ function initiateRPS() {
     };
 }
 
+function friendAddition(name) {
+    var messageBox = document.createElement('ul');
+    messageBox.className = 'messages';
+    messageBox.id = 'chat-messages-player-' + name;
+    messageBox.style.display = 'none';
+    element('chat-box').appendChild(messageBox);
+
+    var dropDown = document.createElement('option');
+    dropDown.value = 'a' + name;
+    dropDown.id = 'drop-down-' + name;
+    dropDown.textContent = name;
+    element('chat-box-dropdown').appendChild(dropDown);
+}
+
 /*
 *    Initiates the controls for the snake minigame,
 *    setting the on key event to their proper handlers,
@@ -337,23 +360,26 @@ function gameInit() {
 *    box to allow for private messaging
 */
 function playerAddition(name) {
+    /**
     var messageBox = document.createElement('ul');
     messageBox.className = 'messages';
     messageBox.id = 'chat-messages-player-' + name;
     messageBox.style.display = 'none';
     element('chat-box').appendChild(messageBox);
+    */
 
     var newPlayer = document.createElement('section');
     newPlayer.id = 'playerlist-' + name;
     newPlayer.className = 'players';
     newPlayer.textContent = name;
     element('global-chat-players').appendChild(newPlayer);
-
+    /**
     var dropDown = document.createElement('option');
     dropDown.value = 'a' + name;
     dropDown.id = 'drop-down-' + name;
     dropDown.textContent = name;
     element('chat-box-dropdown').appendChild(dropDown);
+    */
 }
 
 

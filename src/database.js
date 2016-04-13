@@ -25,3 +25,8 @@ module.exports.snakeScore = module.exports.sequelize.define('snakeScore', {
     username: Sequelize.STRING,
     score   : Sequelize.INTEGER
 });
+
+module.exports.friend = module.exports.sequelize.define('friend', {
+    username : Sequelize.STRING,
+    friend   : Sequelize.STRING,
+});

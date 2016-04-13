@@ -1,4 +1,5 @@
 var model = require(__dirname + '/database.js').user;
+var friend = require(__dirname + '/database.js').friend;
 var database = require(__dirname + '/database.js').sequelize;
 var snakeScore = require(__dirname + '/database.js').snakeScore;
 
@@ -95,6 +96,22 @@ module.exports.direction_update = function(socket, msg) {
 
 function client_addition(socket, record) {
     socket.broadcast.emit('player_addition', as_array(record));
+    friend.findAll({where : {username : socket.handshake.session.userdata}})
+    .then(function(relations) {
+        relations.forEach(function(relation) {
+            if (relation.friend in clients) {
+                friend.findOne({where : {
+                    username : relation.friend,
+                    friend : socket.handshake.session.userdata
+                }}).then(function(friendship) {
+                    if (friendship) {
+                        socket.broadcast.to(clients[friendship.username].socketID).emit('friend_addition', friendship.friend);
+                        socket.emit('friend_addition', friendship.username);
+                    }
+                })
+            }
+        })
+    });
 }
 
 module.exports.client_removal = function(socket) {
@@ -102,6 +119,7 @@ module.exports.client_removal = function(socket) {
         if (socket.handshake.session.userdata in rpsChallenge) {
             if (rpsChallenge[rpsChallenge[socket.handshake.session.userdata]] === socket.handshake.session.userdata) {
                 socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.userdata]].socketID).emit('rps_result', 'won');
+                delete rpsChallenge[socket.handshake.session.userdata];
             }
         }
         if (socket.handshake.session.userdata in clients) {
@@ -430,6 +448,36 @@ function command(user, param, io, socket) {
             else {
                 rps_game_init(socket, param[1]);
             }
+        }
+    }
+    else if (param[0] === '/friend') {
+        if (socket.handshake.session.userdata !== param[1]) {
+            model.findOne({ where : {
+                username : param[1]
+            }}).then(function(user) {
+                if (user) {
+                    friend.findOne({where : {
+                        username : socket.handshake.session.userdata,
+                        friend   : param[1]
+                    }}).then(function(relation){
+                        if (!relation)
+                            friend.create({
+                                username : socket.handshake.session.userdata,
+                                friend : param[1]
+                            }).then(function(friendship) {
+                                friend.findOne({where : {
+                                    username : friendship.friend,
+                                    friend   : friendship.username
+                                }}).then(function(friends) {
+                                    if(friends) {
+                                        socket.emit('friend_addition', friends.username);
+                                        socket.broadcast.to(clients[friends.username].socketID).emit('friend_addition', friends.friend);
+                                    }
+                                })
+                            })
+                    });
+                }
+            });
         }
     }
 }
