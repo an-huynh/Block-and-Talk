@@ -17,8 +17,8 @@ var socketFunctions = {
     player_addition : null,
     friend_addition : null,
     player_removal : null,
+    player_position_response : null,
     player_list_response : null,
-    message_list_response : null,
     message_post : null,
     private_message : null,
     initiate_snake : null,
@@ -55,7 +55,7 @@ function loginMenu() {
 
     // LARGE LOGO
     ctx.textAlign = 'center';
-    ctx.font = '55px Lemon_Milk';
+    ctx.font = '55px Helvetica';
     ctx.fillStyle = 'black';
     ctx.fillText('Block and Talk', canvas.width / 2, canvas.height / 2);
 
@@ -117,8 +117,8 @@ function initLoginFunctions() {
     socketFunctions.player_addition = function(msg) {};
     socketFunctions.friend_addition = function(msg) {};
     socketFunctions.player_removal  = function(msg) {};
+    socketFunctions.player_position_response = function(msg) {};
     socketFunctions.player_list_response = function(msg) {};
-    socketFunctions.message_list_response = function(msg) {};
     socketFunctions.message_post = function(msg) {};
     socketFunctions.initiate_snake = function(msg) {};
     socketFunctions.snake_update = function(msg) {};
@@ -144,8 +144,8 @@ function initSockets() {
     socket.on('player_addition', function(msg) {socketFunctions.player_addition(msg);});
     socket.on('friend_addition', function(msg) {socketFunctions.friend_addition(msg);});
     socket.on('player_removal', function(msg) {socketFunctions.player_removal(msg);});
+    socket.on('player_position_response', function(msg) {socketFunctions.player_position_response(msg);});
     socket.on('player_list_response', function(msg) {socketFunctions.player_list_response(msg);});
-    socket.on('message_list_response', function(msg) {socketFunctions.message_list_response(msg);});
     socket.on('message_post', function(msg) {socketFunctions.message_post(msg);});
     socket.on('private_message', function(msg) {socketFunctions.private_message(msg);});
     socket.on('initiate_snake', function(msg) {socketFunctions.initiate_snake(msg);});
@@ -193,11 +193,11 @@ function initGameFunctions() {
         }
         drawGame();
     };
-    socketFunctions.player_list_response = function(msg) {
+    socketFunctions.player_position_response = function(msg) {
         players = msg;
         drawGame();
     };
-    socketFunctions.message_list_response = function(msg) {
+    socketFunctions.player_list_response = function(msg) {
         for (var i = 0; i < msg.length; i++) {
             if (!document.querySelector('#playerlist-' + msg[i])){
                 playerAddition(msg[i]);
@@ -274,7 +274,7 @@ function initGameFunctions() {
 *    need.
 */
 function initiateSnake(msg) {
-    socketFunctions.player_list_response = function(msg) {};
+    socketFunctions.player_position_response = function(msg) {};
     socketFunctions.initiate_snake = function(msg) {};
     socketFunctions.snake_update = function(msg) {
         snakeDraw(msg);
@@ -288,7 +288,7 @@ function initiateSnake(msg) {
 }
 
 function initiateRPS() {
-    socketFunctions.player_list_response = function(msg) {};
+    socketFunctions.player_position_response = function(msg) {};
     socketFunctions.initiate_snake = function(msg) {};
     socketFunctions.snake_update = function(msg) {};
     socketFunctions.uninitiate_snake = function(msg) {};
@@ -345,11 +345,12 @@ function initiateRPSControls() {
 function gameInit() {
     initGameFunctions();
     chatBoxInitialize();
+    socket.emit('player_position_request', '');
     socket.emit('player_list_request', '');
-    socket.emit('message_list_request', '');
     document.removeEventListener('mousedown', loginMenuHandler, false);
     window.onkeydown = keyDownHandler;
     window.onkeyup = keyUpHandler;
+    drawGame();
 }
 
 /*
@@ -358,26 +359,11 @@ function gameInit() {
 *    box to allow for private messaging
 */
 function playerAddition(name) {
-    /**
-    var messageBox = document.createElement('ul');
-    messageBox.className = 'messages';
-    messageBox.id = 'chat-messages-player-' + name;
-    messageBox.style.display = 'none';
-    element('chat-box').appendChild(messageBox);
-    */
-
     var newPlayer = document.createElement('section');
     newPlayer.id = 'playerlist-' + name;
     newPlayer.className = 'players';
     newPlayer.textContent = name;
     element('global-chat-players').appendChild(newPlayer);
-    /**
-    var dropDown = document.createElement('option');
-    dropDown.value = 'a' + name;
-    dropDown.id = 'drop-down-' + name;
-    dropDown.textContent = name;
-    element('chat-box-dropdown').appendChild(dropDown);
-    */
 }
 
 
@@ -402,10 +388,15 @@ function loginRequest() {
 *    is open
 */
 function registerRequest() {
-    if (element('register-password1').value === element('register-password2').value)
-        socket.emit('open_name_request', element('register-username').value);
+    if (/^[a-z0-9_]+$/i.test(element('register-username').value)) {
+        if (element('register-password1').value === element('register-password2').value &&
+            element('register-password1').value.length >= 6)
+            socket.emit('open_name_request', element('register-username').value);
+        else
+            alert('passwords do not match or are less than 6 characters');
+    }
     else
-        alert('passwords do not match');
+        alert('Name can only contain numbers, letters, and _')
     return false;
 }
 

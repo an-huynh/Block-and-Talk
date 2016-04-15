@@ -20,6 +20,18 @@ module.exports.user = module.exports.sequelize.define('user', {
     shape    : Sequelize.STRING,
     admin    : Sequelize.BOOLEAN,
     banned   : Sequelize.BOOLEAN
+}, {
+    instanceMethods : {
+        asArray : function() {
+            return {
+                username : this.username,
+                color : this.color,
+                shape : this.shape,
+                posx  : this.posx,
+                posy  : this.posy
+            };
+        }
+    }
 });
 
 module.exports.snakeScore = module.exports.sequelize.define('snakeScore', {

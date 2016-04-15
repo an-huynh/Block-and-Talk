@@ -33,8 +33,8 @@ io.on('connection', function(socket) {
     socket.on('direction_update', function(msg) {
         controller.direction_update(socket, msg);
     });
-    socket.on('player_list_request', function(msg) {
-        controller.player_list_request(socket);
+    socket.on('player_position_request', function(msg) {
+        controller.player_position_request(socket);
     });
     socket.on('message_post', function(msg) {
         controller.message_post(io, socket, msg);
@@ -42,8 +42,8 @@ io.on('connection', function(socket) {
     socket.on('private_message_post', function(msg) {
         controller.private_message_post(socket, msg);
     });
-    socket.on('message_list_request', function(msg) {
-        controller.message_list_request(socket);
+    socket.on('player_list_request', function(msg) {
+        controller.player_list_request(socket);
     });
     socket.on('snake_direction_update', function(msg) {
         controller.snake_direction_update(socket, msg);
@@ -56,9 +56,14 @@ io.on('connection', function(socket) {
         controller.client_removal(socket);
     });
 });
-
-setInterval(controller.updating, 1000 / 60, io);
+setInterval(controller.positionUpdate, 1000 / 60, io);
 
 http.listen(3000, function() {
     console.log('listening on *:3000');
+});
+
+process.on('SIGINT', function() {
+    controller.saveClients();
+    console.log('goodbye');
+    process.exit();
 });
