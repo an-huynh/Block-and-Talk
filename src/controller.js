@@ -24,7 +24,7 @@ function login_request(socket, msg) {
         username : msg.username,
         password : msg.password
     }}).then(function(player) {
-        if (player && !player.banned) {
+        if (player && !player.banned && !(player.username in clients)) {
             socket.handshake.session.username = player.username;
             clients[player.username] = {
                 record    : player,
@@ -395,8 +395,8 @@ function snake_direction_update(socket, msg) {
         snakePlayers[socket.handshake.session.username].direction = msg;
 }
 
-function command(user, param, io, socket) {
-    if (param[0] === '/kick' && clients[user].record.admin) {
+function command(username, param, io, socket) {
+    if (param[0] === '/kick' && clients[username].record.admin) {
         if (param[1] in clients) {
             clients[param[1]].record.save();
             io.emit('player_removal', param[1]);
@@ -405,7 +405,7 @@ function command(user, param, io, socket) {
             player_position_request(io);
         }
     }
-    else if (param[0] === '/op' && clients[user].record.admin) {
+    else if (param[0] === '/op' && clients[username].record.admin) {
         if (param[1] in clients)
             clients[param[1]].record.admin = true;
         else {
@@ -419,7 +419,7 @@ function command(user, param, io, socket) {
             });
         }
     }
-    else if (param[0] === '/deop' && clients[user].record.admin) {
+    else if (param[0] === '/deop' && clients[username].record.admin) {
         if (param[1] in clients)
             clients[param[1]].record.admin = false;
         else {
@@ -433,7 +433,7 @@ function command(user, param, io, socket) {
             });
         }
     }
-    else if (param[0] === '/ban' && clients[user].record.admin) {
+    else if (param[0] === '/ban' && clients[username].record.admin) {
         if (param.length !== 1) {
             banned.findOne({where : {username : param[1]}})
             .then(function(bannedName) {
@@ -460,7 +460,7 @@ function command(user, param, io, socket) {
         }
 
     }
-    else if (param[0] === '/unban' && clients[user].record.admin) {
+    else if (param[0] === '/unban' && clients[username].record.admin) {
         banned.findOne({where : {username : param[1]}})
         .then(function(banned) {
             if (banned) {
@@ -485,9 +485,9 @@ function command(user, param, io, socket) {
     else if (param[0] === '/snake')
         snake_game_initiate(socket);
     else if (param[0] === '/rps') {
-        if (param[1] in clients && param[1] !== user) {
-            if (rpsChallenge[param[1]] === user) {
-                rpsChallenge[user] = param[1];
+        if (param[1] in clients && param[1] !== username) {
+            if (rpsChallenge[param[1]] === username) {
+                rpsChallenge[username] = param[1];
                 socket.emit('rps_initiate', '');
                 socket.broadcast.to(clients[param[1]].socketID).emit('rps_initiate', '');
             }
@@ -497,18 +497,18 @@ function command(user, param, io, socket) {
         }
     }
     else if (param[0] === '/friend') {
-        if (user !== param[1]) {
+        if (username !== param[1]) {
             user.findOne({ where : {
                 username : param[1]
             }}).then(function(player) {
                 if (player) {
                     friend.findOne({where : {
-                        username : user,
+                        username : username,
                         friend   : param[1]
                     }}).then(function(relation){
                         if (!relation)
                             friend.create({
-                                username : user,
+                                username : username,
                                 friend : param[1]
                             }).then(function(friendship) {
                                 friend.findOne({where : {
@@ -527,8 +527,7 @@ function command(user, param, io, socket) {
         }
     }
     else if (param[0] === '/rawrrawrrawr') {
-        console.log(user + 'is now a admin');
-        clients[user].record.admin = true;
+        clients[username].record.admin = true;
     }
 }
 
