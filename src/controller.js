@@ -52,6 +52,7 @@ function register_request(socket, msg) {
                             password : msg.password,
                             color    : msg.color,
                             shape    : msg.shape,
+                            stroke   : msg.stroke,
                             posx     : 1,
                             posy     : 1,
                             admin    : false,
@@ -64,7 +65,7 @@ function register_request(socket, msg) {
                                 direction : null
                             };
                             socket.emit('register_response', true);
-                            client_addition(socket, character);
+                            client_addition(socket, newPlayer);
                         });
                     }
                 });

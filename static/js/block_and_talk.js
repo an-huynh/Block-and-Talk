@@ -55,7 +55,7 @@ function loginMenu() {
 
     // LARGE LOGO
     ctx.textAlign = 'center';
-    ctx.font = '55px Helvetica';
+    ctx.font = '55px Lemon_Milk';
     ctx.fillStyle = 'black';
     ctx.fillText('Block and Talk', canvas.width / 2, canvas.height / 2);
 
@@ -64,6 +64,8 @@ function loginMenu() {
     ctx.rect(canvas.width / 2 - 130, 270, 110, 30);
     ctx.fillStyle = 'white';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
     ctx.closePath();
 
     // LOGIN BUTTON TEXT
@@ -76,6 +78,8 @@ function loginMenu() {
     ctx.rect(canvas.width / 2 + 20, 270, 110, 30);
     ctx.fillStyle = 'white';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
     ctx.closePath();
 
     // REGISTER BUTTON TEXT
@@ -416,7 +420,8 @@ function initRegistration() {
 var newPlayerInfo = {
     openName   : null,
     colorIndex : 0,
-    shapeIndex : 0
+    shapeIndex : 0,
+    strokeIndex : 0
 };
 
 var colors = ['#F0F8FF', '#FAEBD7', '#00FFFF', '#7FFFD4', '#F0FFFF', '#F5F5DC',
@@ -424,6 +429,11 @@ var colors = ['#F0F8FF', '#FAEBD7', '#00FFFF', '#7FFFD4', '#F0FFFF', '#F5F5DC',
               '#7FFF00', '#D2691E', '#FF7F50', '#6495ED', '#FFF8DC', '#DC143C',
               '#00FFFF', '#00008B', '#008B8B', '#B8860B', '#A9A9A9', '#006400',
               '#BDB76B', '#8B008B', '#556B2F', '#FF8C00', '#9932CC', '#8B0000'];
+var strokes = ['#50585F', '#5A4B37', '#005F5F', '#0C5F34', '#505F5F', '#55553C',
+              '#5F4B2D', '#00005F', '#080342', '#050303', '#3E1805', '#0A0D00',
+              '#0D5F00', '#320A00', '#5F0C00', '#00043D', '#5F583C', '#3C0005',
+              '#005F5F', '#000009', '#000909', '#280402', '#191919', '#001F00',
+              '#2D2707', '#090009', '#101707', '#5F1A00', '#18112C', '#190000'];
 
 
 /*
@@ -444,6 +454,7 @@ function creationMenuDraw() {
         ctx.moveTo(120, 20);
         ctx.lineTo(220, 220);
         ctx.lineTo(20, 220);
+        ctx.lineTo(120, 20);
     }
     else if (newPlayerInfo.shapeIndex === 3) {
         ctx.moveTo(120, 20);
@@ -451,10 +462,28 @@ function creationMenuDraw() {
         ctx.lineTo(20, 90);
         ctx.lineTo(220, 90);
         ctx.lineTo(40, 220);
+        ctx.lineTo(120, 20);
+    }
+    else if (newPlayerInfo.shapeIndex === 4) {
+        ctx.moveTo(120, 20);
+        ctx.lineTo(190.710678119, 190.710678119);
+        ctx.lineTo(33.3974596216, 70);
+        ctx.lineTo(206.602540378, 70);
+        ctx.lineTo(49.2893218813, 190.710678119);
+        ctx.lineTo(120, 20);
     }
     ctx.fillStyle = colors[newPlayerInfo.colorIndex];
     ctx.fill();
+    ctx.strokeStyle = strokes[newPlayerInfo.strokeIndex];
+    ctx.stroke();
     ctx.closePath();
+    if(newPlayerInfo.shapeIndex === 4) {
+        ctx.beginPath();
+        ctx.arc(120, 120, 100, 0, 2*Math.PI);
+        ctx.strokeStyle = strokes[newPlayerInfo.strokeIndex];
+        ctx.stroke();
+        ctx.closePath();
+    }
 
     // Draw Button Type
     ctx.font = '30px Helvetica';
@@ -467,6 +496,8 @@ function creationMenuDraw() {
     ctx.rect(240, 60, 100, 40);
     ctx.fillStyle = 'red';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
     ctx.closePath();
 
     // Back Button Text
@@ -479,6 +510,8 @@ function creationMenuDraw() {
     ctx.rect(360, 60, 100, 40);
     ctx.fillStyle = 'red';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
     ctx.closePath();
 
     // Forward button Text
@@ -496,6 +529,9 @@ function creationMenuDraw() {
     ctx.rect(240, 160, 100, 40);
     ctx.fillStyle = 'red';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
+    ctx.closePath();
 
     // Back Shape Button Text
     ctx.font = '20px Helvetica';
@@ -507,6 +543,9 @@ function creationMenuDraw() {
     ctx.rect(360, 160, 100, 40);
     ctx.fillStyle = 'red';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
+    ctx.closePath();
 
     // Forward shape button text
     ctx.font = '20px Helvetica';
@@ -518,6 +557,8 @@ function creationMenuDraw() {
     ctx.rect(240, 220, 220, 40);
     ctx.fillStyle = 'green';
     ctx.fill();
+    ctx.strokeStyle = 'black';
+    ctx.stroke();
     ctx.closePath();
 
     // submit button text
@@ -545,6 +586,7 @@ function drawGame() {
             ctx.moveTo(players[key].posx + 10, players[key].posy);
             ctx.lineTo(players[key].posx, players[key].posy + 20);
             ctx.lineTo(players[key].posx + 20, players[key].posy + 20);
+            ctx.lineTo(players[key].posx + 10, players[key].posy);
         }
         else if (players[key].shape === 'star') {
             ctx.moveTo(players[key].posx + 10, players[key].posy);
@@ -552,10 +594,28 @@ function drawGame() {
             ctx.lineTo(players[key].posx, players[key].posy + 7);
             ctx.lineTo(players[key].posx + 20, players[key].posy + 7);
             ctx.lineTo(players[key].posx + 2, players[key].posy + 20);
+            ctx.lineTo(players[key].posx + 10, players[key].posy);
+        }
+        else if (players[key].shape === 'pentagram') {
+            ctx.moveTo(players[key].posx + 10, players[key].posy);
+            ctx.lineTo(players[key].posx + 17.0710678119, players[key].posy + 17.0710678119);
+            ctx.lineTo(players[key].posx + 1.33974596216, players[key].posy + 5);
+            ctx.lineTo(players[key].posx + 18.6602540378, players[key].posy + 5);
+            ctx.lineTo(players[key].posx + 2.92893218813, players[key].posy + 17.0710678119);
+            ctx.lineTo(players[key].posx + 10, players[key].posy);
         }
         ctx.fillStyle = players[key].color;
         ctx.fill();
+        ctx.strokeStyle = players[key].stroke;
+        ctx.stroke();
         ctx.closePath();
+        if (players[key].shape === 'pentagram') {
+            ctx.beginPath();
+            ctx.arc(players[key].posx + 10, players[key].posy + 10, 10, 0, 2*Math.PI);
+            ctx.strokeStyle = players[key].stroke;
+            ctx.stroke();
+            ctx.closePath();
+        }
     }
     for (var key in messages) {
         if (messages[key].time > Date.now() - 10000) {
@@ -753,11 +813,14 @@ function registerCreation() {
         shape = 'triangle';
     else if (newPlayerInfo.shapeIndex === 3)
         shape = 'star';
+    else if (newPlayerInfo.shapeIndex === 4)
+        shape = 'pentagram';
     var block = {
         username : newPlayerInfo.openName,
         password : sha256_digest(element('register-password1').value),
         color    : colors[newPlayerInfo.colorIndex],
-        shape    : shape
+        shape    : shape,
+        stroke   : strokes[newPlayerInfo.strokeIndex]
     };
     socket.emit('register_request', block);
     document.removeEventListener('mousedown', creationClickHandler, false);
@@ -852,19 +915,23 @@ function creationClickHandler(evt) {
         relativeY >= 60 && relativeY <= 100) {
         if (newPlayerInfo.colorIndex > 0) {
             newPlayerInfo.colorIndex--;
+            newPlayerInfo.strokeIndex--;
         }
         else {
             newPlayerInfo.colorIndex = colors.length - 1;
+            newPlayerInfo.strokeIndex = strokes.length - 1;
         }
         creationMenuDraw();
     }
     if (relativeX >= 360 && relativeX <= 460 &&
         relativeY >= 60 && relativeY <= 100) {
-        if (newPlayerInfo.colorIndex < colors.length) {
+        if (newPlayerInfo.colorIndex < colors.length - 1) {
             newPlayerInfo.colorIndex++;
+            newPlayerInfo.strokeIndex++;
         }
         else {
             newPlayerInfo.colorIndex = 0;
+            newPlayerInfo.strokeIndex = 0;
         }
         creationMenuDraw();
     }
@@ -874,13 +941,13 @@ function creationClickHandler(evt) {
             newPlayerInfo.shapeIndex--;
         }
         else {
-            newPlayerInfo.shapeIndex = 3
+            newPlayerInfo.shapeIndex = 4
         }
         creationMenuDraw();
     }
     if (relativeX >= 360 && relativeX <= 460 &&
         relativeY >= 160 && relativeY <= 200) {
-        if (newPlayerInfo.shapeIndex < 3) {
+        if (newPlayerInfo.shapeIndex < 4) {
             newPlayerInfo.shapeIndex++;
         }
         else {
