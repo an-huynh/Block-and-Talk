@@ -58,6 +58,7 @@ function register_request(socket, msg) {
                             shape    : msg.shape,
                             sectionX : 0,
                             sectionY : 0,
+                            stroke   : msg.stroke,
                             posx     : 1,
                             posy     : 1,
                             admin    : false,

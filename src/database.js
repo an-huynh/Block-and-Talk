@@ -19,16 +19,18 @@ module.exports.user = module.exports.sequelize.define('user', {
     color    : Sequelize.STRING,
     shape    : Sequelize.STRING,
     admin    : Sequelize.BOOLEAN,
-    banned   : Sequelize.BOOLEAN
+    banned   : Sequelize.BOOLEAN,
+    stroke   : Sequelize.STRING
 }, {
     instanceMethods : {
         asArray : function() {
             return {
                 username : this.username,
-                color : this.color,
-                shape : this.shape,
-                posx  : this.posx,
-                posy  : this.posy
+                color  : this.color,
+                shape  : this.shape,
+                stroke : this.stroke,
+                posx   : this.posx,
+                posy   : this.posy
             };
         }
     }
