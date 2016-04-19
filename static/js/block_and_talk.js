@@ -15,6 +15,7 @@ var socketFunctions = {
     open_name_response : null,
     register_response : null,
     player_addition : null,
+    zone_addition : null,
     friend_addition : null,
     player_removal : null,
     player_position_response : null,
@@ -115,6 +116,7 @@ function initLoginFunctions() {
             alert('Something bad happened');
     };
     socketFunctions.player_addition = function(msg) {};
+    socketFunctions.zone_addition = function(msg) {};
     socketFunctions.friend_addition = function(msg) {};
     socketFunctions.player_removal  = function(msg) {};
     socketFunctions.player_position_response = function(msg) {};
@@ -142,6 +144,7 @@ function initSockets() {
     socket.on('open_name_response', function(msg) {socketFunctions.open_name_response(msg);});
     socket.on('register_response', function(msg) {socketFunctions.register_response(msg);});
     socket.on('player_addition', function(msg) {socketFunctions.player_addition(msg);});
+    socket.on('zone_addition', function(msg) {socketFunctions.zone_addition(msg);});
     socket.on('friend_addition', function(msg) {socketFunctions.friend_addition(msg);});
     socket.on('player_removal', function(msg) {socketFunctions.player_removal(msg);});
     socket.on('player_position_response', function(msg) {socketFunctions.player_position_response(msg);});
@@ -170,9 +173,11 @@ function initGameFunctions() {
     socketFunctions.register_response = function(msg) {};
     socketFunctions.player_addition = function(msg) {
         playerAddition(msg.username);
+    };
+    socketFunctions.zone_addition = function(msg) {
         players[msg.username] = msg;
         drawGame();
-    };
+    }
     socketFunctions.friend_addition = function(msg) {
         friendAddition(msg);
     };

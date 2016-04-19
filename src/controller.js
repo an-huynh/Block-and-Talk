@@ -6,11 +6,12 @@ var banned = require(__dirname + '/database.js').ban;
 
 database.sync();
 
-var clients = {};
 var snakeGame = {};
 var snakePlayers = {};
 var rpsChallenge = {};
 var rpsGame = {};
+var clients = {};
+clients['0_0'] = {};
 
 function snakeListAsArray(record) {
     return {
@@ -26,11 +27,14 @@ function login_request(socket, msg) {
     }}).then(function(player) {
         if (player && !player.banned && !(player.username in clients)) {
             socket.handshake.session.username = player.username;
-            clients[player.username] = {
-                record    : player,
-                socketID  : socket.id,
+            var zone = player.sectionX + '_' + player.sectionY;
+            socket.handshake.session.zone = zone;
+            clients[zone][player.username] = {
+                record : player,
+                socketID : socket.id,
                 direction : null
             };
+            socket.join(zone);
             socket.emit('login_response', true);
             client_addition(socket, player);
         }
@@ -52,17 +56,22 @@ function register_request(socket, msg) {
                             password : msg.password,
                             color    : msg.color,
                             shape    : msg.shape,
+                            sectionX : 0,
+                            sectionY : 0,
                             posx     : 1,
                             posy     : 1,
                             admin    : false,
                             banned   : false
                         }).then(function(newPlayer) {
                             socket.handshake.session.username = newPlayer.username;
-                            clients[newPlayer.username] = {
+                            var zone = newPlayer.sectionX + '_' + newPlayer.sectionY;
+                            socket.handshake.session.zone = zone;
+                            clients[zone][newPlayer.username] = {
                                 record    : newPlayer,
                                 socketID  : socket.id,
                                 direction : null
                             };
+                            socket.join(zone);
                             socket.emit('register_response', true);
                             client_addition(socket, newPlayer);
                         });
@@ -98,7 +107,9 @@ function direction_update(socket, msg) {
 }
 
 function client_addition(socket, record) {
-    socket.broadcast.emit('player_addition', record.asArray());
+    var zone = socket.handshake.session.zone;
+    socket.broadcast.emit('player_addition', record.username);
+    socket.broadcast.to(zone).emit('zone_addition', record.asArray());
     friend.findAll({where : {username : socket.handshake.session.username}})
     .then(function(relationships) {
         relationships.forEach(function(relationship) {
@@ -136,8 +147,8 @@ function client_removal(socket) {
 
 function player_position_request(socket) {
     var response = {};
-    for (var key in clients)
-        response[key] = clients[key].record.asArray();
+    for (var key in clients[socket.handshake.session.zone])
+        response[key] = clients[socket.handshake.session.zone][key].record.asArray();
     socket.emit('player_position_response', response);
 }
 
