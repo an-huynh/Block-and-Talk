@@ -24,7 +24,6 @@ header {
 #myCanvas {
     margin-bottom: 20px;
     background-color: rgb(195, 238, 238);
-    background: url('/img/beach.png');
 }
 
 form {

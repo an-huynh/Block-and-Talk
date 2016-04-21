@@ -9,21 +9,23 @@ var user = database.define('user', {
     password : Sequelize.STRING,
     sectionX : Sequelize.INTEGER,
     sectionY : Sequelize.INTEGER,
-    posx     : Sequelize.INTEGER,
-    posy     : Sequelize.INTEGER,
+    posX     : Sequelize.INTEGER,
+    posY     : Sequelize.INTEGER,
     color    : Sequelize.STRING,
     shape    : Sequelize.STRING,
     admin    : Sequelize.BOOLEAN,
-    banned   : Sequelize.BOOLEAN
+    banned   : Sequelize.BOOLEAN,
+    stroke   : Sequelize.STRING
 }, {
     instanceMethods : {
         asArray: function() {
             return {
                 username : this.username,
-                color : this.color,
-                shape : this.shape,
-                posx  : this.posx,
-                posy  : this.posy
+                color    : this.color,
+                shape    : this.shape,
+                posX     : this.posX,
+                posY     : this.posY,
+                stroke   : this.stroke
             };
         }
     }

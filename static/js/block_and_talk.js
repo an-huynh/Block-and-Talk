@@ -3,55 +3,276 @@ var ctx;
 var socket;
 var players;
 var messages = {};
-var currentMessageBox = 'global';
+var socketFunctions = {
+    loginResponse: function() {},
+    registerResponse: function() {},
+    openNameResponse: function() {},
+    playerListResponse: function() {},
+    globalAddition: function() {},
+    zoneAddition: function() {},
+    friendAddition: function() {},
+    playerRemoval: function() {},
+    zoneUpdate: function() {},
+    currentZone: function() {},
+    newMessage: function() {},
+    newPM: function() {},
+    stopGame: function() {}
+};
 var direction = {
     left  : false,
     right : false,
     up    : false,
     down  : false
 };
-var socketFunctions = {
-    login_response : null,
-    open_name_response : null,
-    register_response : null,
-    player_addition : null,
-    zone_addition : null,
-    friend_addition : null,
-    player_removal : null,
-    player_position_response : null,
-    player_list_response : null,
-    message_post : null,
-    private_message : null,
-    initiate_snake : null,
-    snake_update : null,
-    kicked : null,
-    rps_invite : null,
-    rps_initiate : null,
-    rps_result : null
-};
-var snakeGameList = {};
-var rpsSelected = null;
 
-
-/*
-*    Initiates the app on load, creates the canvas
-*    initiates the sockets, and draws the login menu
-*/
 window.onload = function() {
-    canvas = element('myCanvas');
+    canvas = elt('myCanvas');
     ctx = canvas.getContext('2d');
     initSockets();
-    loginMenu();
-    initLoginFunctions();
+    startLoginFunctions();
+    startMenu();
 }
 
-/*
-*    Draws the login menu for the game, as well as
-*    adding event listeners to register user clicks
-*    as well as registering the submission boxes for
-*    logging in and registering
-*/
-function loginMenu() {
+function elt(id) {
+    return document.getElementById(id);
+}
+
+function startMenu() {
+    drawStartMenu();
+    document.addEventListener('mousedown', startMenuHandler, false);
+    elt('login').onsubmit = loginRequest;
+    elt('register').onsubmit = registerRequest;
+}
+
+function stopMenu() {
+    document.removeEventListener('mousedown', startMenuHandler, false);
+    elt('login').style.display = 'none';
+    elt('register').style.display = 'none';
+}
+
+function startCreationMenu() {
+    document.addEventListener('mousedown', creationClickHandler, false);
+    creationMenuDraw();
+}
+
+function stopCreationMenu() {
+    document.removeEventListener('mousedown', creationClickHandler, false);
+}
+
+function startGame() {
+    socket.emit('currentZoneRequest', '');
+    window.onkeydown = gameKeyDown;
+    window.onkeyup = gameKeyUp;
+    socket.emit('zoneRequest', '');
+    socket.emit('playerListRequest', '');
+}
+
+function stopGame() {
+    window.onkeydown = null;
+    window.onkeyup = null;
+}
+
+function startChatBox() {
+    var newGlobalChat = document.createElement('ul');
+    newGlobalChat.className = 'messages';
+    newGlobalChat.id = 'global-chat-messages';
+    var newGlobalOption = document.createElement('option');
+    newGlobalOption.value = 'global';
+    newGlobalOption.innerHTML = 'global';
+    elt('chat-box-dropdown').appendChild(newGlobalOption);
+    elt('chat-box').appendChild(newGlobalChat);
+    elt('chat-box-dropdown').style.display = 'block';
+    elt('chat-box').style.display = 'block';
+    elt('message-form').style.display = 'block';
+    elt('playerlist-box').style.display = 'block';
+    socket.emit('playerListRequest', '');
+
+    elt('message-input').onfocus = typingMessage;
+    elt('message-input').onblur = notTypingMessage;
+    elt('message-form').onsubmit = sendMessage;
+    elt('chat-box-dropdown').onchange = chatBoxHandler;
+}
+
+function pauseChatBox() {
+    elt('chat-box-dropdown').style.display = 'none';
+    elt('chat-box').style.display = 'none';
+    elt('message-form').style.display = 'none';
+    elt('playerlist-box').style.display = 'none';
+
+    elt('message-input').onfocus = null;
+    elt('message-input').onblur = null;
+}
+
+function unpauseChatBox() {
+    elt('chat-box-dropdown').style.display = 'block';
+    elt('chat-box').style.display = 'block';
+    elt('message-form').style.display = 'block';
+    elt('playerlist-box').style.display = 'block';
+
+    elt('message-input').onfocus = typingMessage;
+    elt('message-input').onblur = notTypingMessage;
+}
+
+function stopChatBox() {
+    var chatBox = elt('chat-box');
+    while (chatBox.lastChild) {
+        chatBox.removeChild(chatBox.lastChild);
+    }
+    var playerList = elt('chat-players');
+    while (playerList.lastChild) {
+        playerList.removeChild(playerList.lastChild);
+    }
+    elt('message-input').onfocus = null;
+    elt('message-input').onblur = null;
+    elt('message-form').onsubmit = null;
+    elt('chat-box-dropdown').onchange = null;
+
+}
+
+function sendMessage() {
+    if (elt('message-input').value !== '') {
+        socket.emit('messagePost', elt('message-input').value);
+        elt('message-input').value = '';
+    }
+    return false;
+}
+
+function sendPM() {
+    if (elt('message-input').value !== '') {
+        var message = {
+            destination: elt('chat-box-dropdown').value.substr(1),
+            message: elt('message-input').value
+        };
+        socket.emit('pmPost', message);
+        elt('message-input').value = '';
+    }
+    return false;
+}
+
+function playerListAdd(name) {
+    if (!elt('playerlist-' + name)) {
+        var newPlayer = document.createElement('section');
+        newPlayer.id = 'playerlist-' + name;
+        newPlayer.className = 'players';
+        newPlayer.textContent = name;
+        elt('global-chat-players').appendChild(newPlayer);
+    }
+}
+
+function addFriend(name) {
+    var messageBox = document.createElement('ul');
+    messageBox.className = 'messages';
+    messageBox.id = 'chat-messages-player-' + name;
+    messageBox.style.display = 'none';
+    elt('chat-box').appendChild(messageBox);
+
+    var dropDown = document.createElement('option');
+    dropDown.value = 'a' + name;
+    dropDown.id = 'drop-down-' + name;
+    dropDown.textContent = name;
+    elt('chat-box-dropdown').appendChild(dropDown);
+}
+
+function directionUpdate() {
+    var dir = null;
+    if (direction.up && !direction.down) {
+        if (direction.left && !direction.right)
+            dir = 'up-left';
+        else if (direction.right && !direction.left)
+            dir = 'up-right';
+        else
+            dir = 'up';
+    }
+    else if (direction.down && !direction.up) {
+        if (direction.left && !direction.right)
+            dir = 'down-left';
+        else if (direction.right && !direction.left)
+            dir = 'down-right';
+        else
+            dir = 'down';
+    }
+    else if (direction.left && !direction.right)
+        dir = 'left';
+    else if (direction.right && !direction.left)
+        dir = 'right';
+    socket.emit('directionUpdate', dir);
+}
+
+function loginRequest() {
+    socket.emit('loginRequest', {
+        username: elt('login-username').value,
+        password: sha256_digest(elt('login-password').value)
+    });
+    return false;
+}
+
+function registerRequest() {
+    if (/^[a-z0-9_]+$/i.test(elt('register-username').value)) {
+        if (elt('register-password1').value === elt('register-password2').value &&
+            elt('register-password1').value.length >= 6)
+            socket.emit('openNameRequest', elt('register-username').value);
+        else
+            alert('passwords do not match or are less than 6 characters');
+    }
+    else
+        alert('Name can only contain numbers, letters, and _')
+    return false;
+}
+
+function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (var key in players) {
+        ctx.beginPath();
+        if (players[key].shape === 'square')
+            ctx.rect(players[key].posX, players[key].posY, 20, 20);
+        else if (players[key].shape === 'circle')
+            ctx.arc(players[key].posX + 10, players[key].posY + 10, 10, 0, 2*Math.PI);
+        else if (players[key].shape === 'triangle') {
+            ctx.moveTo(players[key].posX + 10, players[key].posY);
+            ctx.lineTo(players[key].posX, players[key].posY + 20);
+            ctx.lineTo(players[key].posX + 20, players[key].posY + 20);
+            ctx.lineTo(players[key].posX + 10, players[key].posY);
+        }
+        else if (players[key].shape === 'star') {
+            ctx.moveTo(players[key].posX + 10, players[key].posY);
+            ctx.lineTo(players[key].posX + 18, players[key].posY + 20);
+            ctx.lineTo(players[key].posX, players[key].posY + 7);
+            ctx.lineTo(players[key].posX + 20, players[key].posY + 7);
+            ctx.lineTo(players[key].posX + 2, players[key].posY + 20);
+            ctx.lineTo(players[key].posX + 10, players[key].posY);
+        }
+        else if (players[key].shape === 'pentagram') {
+            ctx.moveTo(players[key].posX + 10, players[key].posY);
+            ctx.lineTo(players[key].posX + 17.0710678119, players[key].posY + 17.0710678119);
+            ctx.lineTo(players[key].posX + 1.33974596216, players[key].posY + 5);
+            ctx.lineTo(players[key].posX + 18.6602540378, players[key].posY + 5);
+            ctx.lineTo(players[key].posX + 2.92893218813, players[key].posY + 17.0710678119);
+            ctx.lineTo(players[key].posX + 10, players[key].posY);
+        }
+        ctx.fillStyle = players[key].color;
+        ctx.fill();
+        ctx.strokeStyle = players[key].stroke;
+        ctx.stroke();
+        ctx.closePath();
+        if (players[key].shape === 'pentagram') {
+            ctx.beginPath();
+            ctx.arc(players[key].posX + 10, players[key].posY + 10, 10, 0, 2*Math.PI);
+            ctx.strokeStyle = players[key].stroke;
+            ctx.stroke();
+            ctx.closePath();
+        }
+    }
+    for (var key in messages) {
+        if (key in players && messages[key].time > Date.now() - 10000) {
+            ctx.font = '20px Helvetica';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = messages[key].color;
+            ctx.fillText(messages[key].message, players[key].posX + 10, players[key].posY - 10, 200);
+        }
+    }
+}
+
+function drawStartMenu() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // LARGE LOGO
@@ -87,339 +308,6 @@ function loginMenu() {
     ctx.font='25px Helvetica';
     ctx.fillStyle = 'black';
     ctx.fillText('Register', canvas.width / 2 + 75, 293);
-
-    document.addEventListener('mousedown', loginMenuHandler, false);
-    element('login').onsubmit = loginRequest;
-    element('register').onsubmit = registerRequest;
-}
-
-
-/*
-*    Initiates the socket functions for logging in,
-*    removing the uncessary ones temporarily
-*/
-function initLoginFunctions() {
-    socketFunctions.login_response = function(msg) {
-        if (msg)
-            gameInit();
-        else
-            alert('Invalid username or password');
-    };
-    socketFunctions.open_name_response = function(msg) {
-        if (msg) {
-            newPlayerInfo.openName = msg;
-            initRegistration();
-        }
-        else
-            alert('Name Unavailable');
-    };
-    socketFunctions.register_response = function(msg) {
-        if (msg)
-            gameInit();
-        else
-            alert('Something bad happened');
-    };
-    socketFunctions.player_addition = function(msg) {};
-    socketFunctions.zone_addition = function(msg) {};
-    socketFunctions.friend_addition = function(msg) {};
-    socketFunctions.player_removal  = function(msg) {};
-    socketFunctions.player_position_response = function(msg) {};
-    socketFunctions.player_list_response = function(msg) {};
-    socketFunctions.message_post = function(msg) {};
-    socketFunctions.initiate_snake = function(msg) {};
-    socketFunctions.snake_update = function(msg) {};
-    socketFunctions.uninitiate_snake = function(msg) {};
-    socketFunctions.private_message = function(msg) {};
-    socketFunctions.kicked = function(msg) {};
-    socketFunctions.rps_invite = function(msg) {};
-    socketFunctions.rps_initiate = function(msg) {};
-    socketFunctions.rps_result = function(msg) {};
-}
-
-
-/*
-*    Initiates all of the socket functions, assigning each of them a
-*    function corresponding with their function in the socketFunctions
-*    object
-*/
-function initSockets() {
-    socket = io();
-    socket.on('login_response', function(msg) {socketFunctions.login_response(msg);});
-    socket.on('open_name_response', function(msg) {socketFunctions.open_name_response(msg);});
-    socket.on('register_response', function(msg) {socketFunctions.register_response(msg);});
-    socket.on('player_addition', function(msg) {socketFunctions.player_addition(msg);});
-    socket.on('zone_addition', function(msg) {socketFunctions.zone_addition(msg);});
-    socket.on('friend_addition', function(msg) {socketFunctions.friend_addition(msg);});
-    socket.on('player_removal', function(msg) {socketFunctions.player_removal(msg);});
-    socket.on('player_position_response', function(msg) {socketFunctions.player_position_response(msg);});
-    socket.on('player_list_response', function(msg) {socketFunctions.player_list_response(msg);});
-    socket.on('message_post', function(msg) {socketFunctions.message_post(msg);});
-    socket.on('private_message', function(msg) {socketFunctions.private_message(msg);});
-    socket.on('initiate_snake', function(msg) {socketFunctions.initiate_snake(msg);});
-    socket.on('snake_update', function(msg) {socketFunctions.snake_update(msg);});
-    socket.on('uninitiate_snake', function(msg) {socketFunctions.uninitiate_snake(msg);});
-    socket.on('kicked', function(msg) {socketFunctions.kicked(msg);});
-    socket.on('rps_invite', function(msg) {socketFunctions.rps_invite(msg);});
-    socket.on('rps_initiate', function(msg) {socketFunctions.rps_initiate(msg);});
-    socket.on('rps_result', function(msg) {socketFunctions.rps_result(msg);});
-}
-
-
-/*
-*    Initiates all of the socket functions that the
-*    actual game uses. This also includes temporarily
-*    nilling the functions that are unnecessary for the
-*    game
-*/
-function initGameFunctions() {
-    socketFunctions.login_response = function(msg) {};
-    socketFunctions.open_name_response = function(msg) {};
-    socketFunctions.register_response = function(msg) {};
-    socketFunctions.player_addition = function(msg) {
-        playerAddition(msg.username);
-    };
-    socketFunctions.zone_addition = function(msg) {
-        players[msg.username] = msg;
-        drawGame();
-    }
-    socketFunctions.friend_addition = function(msg) {
-        friendAddition(msg);
-    };
-    socketFunctions.player_removal = function(msg) {
-        delete players.msg;
-        if (element('chat-messages-player-' + msg)) {
-            element('chat-box').removeChild(element('chat-messages-player-' + msg));
-            element('chat-box-dropdown').removeChild(element('drop-down-' + msg));
-            element('global-chat-players').removeChild(element('playerlist-' + msg));
-        }
-        if (element('playerlist-' + msg)) {
-            element('global-chat-players').removeChild(element('playerlist-' + msg));
-        }
-        if (currentChatGroup === msg) {
-            currentChatGroup = 'global';
-            element('global-chat-messages').style.display = 'block';
-            element('message-form').onsubmit = messagePost;
-        }
-        drawGame();
-    };
-    socketFunctions.player_position_response = function(msg) {
-        players = msg;
-        drawGame();
-    };
-    socketFunctions.player_list_response = function(msg) {
-        for (var i = 0; i < msg.length; i++) {
-            if (!document.querySelector('#playerlist-' + msg[i])){
-                playerAddition(msg[i]);
-            }
-        }
-    };
-    socketFunctions.message_post = function(msg) {
-        var newMessage = element('message-template').content.cloneNode(true);
-        newMessage.querySelector('.message-username').textContent = msg.username;
-        newMessage.querySelector('.message-content').textContent = msg.message;
-        element('global-chat-messages').appendChild(newMessage);
-        element('chat-box').scrollTop = element('chat-box').scrollHeight;
-        if (!messages[msg.username])
-            messages[msg.username] = {};
-        messages[msg.username].message = msg.message;
-        messages[msg.username].time = Date.now();
-        messages[msg.username].color = 'black';
-        drawGame();
-    };
-    socketFunctions.initiate_snake = function(msg) {
-        snakeGameList = msg;
-        initiateSnake();
-        initiateSnakeControls();
-    };
-    socketFunctions.snake_update = function(msg) {};
-    socketFunctions.uninitiate_snake = function(msg) {};
-    socketFunctions.private_message = function(msg) {
-        var newMessage = element('message-template').content.cloneNode(true);
-        newMessage.querySelector('.message-username').textContent = msg.sender;
-        newMessage.querySelector('.message-content').textContent = msg.message;
-        var group = msg.reciever;
-        if (element('chat-messages-player-' + msg.sender))
-            group = msg.sender;
-        element('chat-messages-player-' + group).appendChild(newMessage);
-        element('chat-box').scrollTop = element('chat-box').scrollHeight;
-        if (!messages[msg.sender])
-            messages[msg.sender] = {};
-        messages[msg.sender].message = msg.message;
-        messages[msg.sender].time = Date.now();
-        messages[msg.sender].color = 'red';
-        drawGame();
-    };
-    socketFunctions.kicked = function(msg) {
-        initLoginFunctions();
-        loginMenu();
-        chatBoxUninitialize();
-        messages = {};
-        players = {};
-        currentMessageBox = 'global';
-        window.onkeydown = null;
-        window.onkeyup = null;
-    };
-    socketFunctions.rps_invite = function(msg) {
-        var newMessage = element('message-template').content.cloneNode(true);
-        newMessage.querySelector('.message-username').textContent = 'GAME';
-        newMessage.querySelector('.message-content').textContent = msg +
-            ' has invited you to play rock paper scissors. to type /rps ' + msg;
-        element('global-chat-messages').appendChild(newMessage);
-        element('chat-box').scrollTop = element('chat-box').scrollHeight;
-    };
-    socketFunctions.rps_initiate = function(msg) {
-        initiateRPS();
-        initiateRPSControls();
-        rpsSelected = null;
-        drawRPS();
-    };
-    socketFunctions.rps_result = function(msg) {};
-}
-
-/*
-*    Initiates all of the socket functions that the
-*    snake minigame needs, as well as nulling all
-*    the socket functions the snake game doesn't
-*    need.
-*/
-function initiateSnake(msg) {
-    socketFunctions.player_position_response = function(msg) {};
-    socketFunctions.initiate_snake = function(msg) {};
-    socketFunctions.snake_update = function(msg) {
-        snakeDraw(msg);
-    };
-    socketFunctions.uninitiate_snake = function(msg) {
-        gameInit();
-    };
-    socketFunctions.kicked = function(msg) {};
-    socketFunctions.rps_initiate = function(msg) {};
-    socketFunctions.rps_result = function(msg) {};
-}
-
-function initiateRPS() {
-    socketFunctions.player_position_response = function(msg) {};
-    socketFunctions.initiate_snake = function(msg) {};
-    socketFunctions.snake_update = function(msg) {};
-    socketFunctions.uninitiate_snake = function(msg) {};
-    socketFunctions.kicked = function(msg) {};
-    socketFunctions.rps_initiate = function(msg) {};
-    socketFunctions.rps_result = function(msg) {
-        drawRPSResult(msg);
-        window.onclick = rpsExitHandler;
-    };
-}
-
-function friendAddition(name) {
-    var messageBox = document.createElement('ul');
-    messageBox.className = 'messages';
-    messageBox.id = 'chat-messages-player-' + name;
-    messageBox.style.display = 'none';
-    element('chat-box').appendChild(messageBox);
-
-    var dropDown = document.createElement('option');
-    dropDown.value = 'a' + name;
-    dropDown.id = 'drop-down-' + name;
-    dropDown.textContent = name;
-    element('chat-box-dropdown').appendChild(dropDown);
-}
-
-/*
-*    Initiates the controls for the snake minigame,
-*    setting the on key event to their proper handlers,
-*    as well as unititializing the chat box while playing
-*/
-function initiateSnakeControls() {
-    window.onkeyup = null;
-    window.onkeydown = snakeHandler;
-    element('message-input').onfocus = null;
-    element('message-input').onblur = null;
-    chatBoxUninitialize();
-}
-
-function initiateRPSControls() {
-    window.onkeyup = null;
-    window.onkeydown = null;
-    window.onclick = rpsHandler;
-    element('message-input').onfocus = null;
-    element('message-input').onblur = null;
-    chatBoxUninitialize();
-}
-
-/*
-*    Initiates the controls for the actual game,
-*    initiating its functions as well as opening
-*    the chat box and creating key handlers for
-*    moving around
-*/
-function gameInit() {
-    initGameFunctions();
-    chatBoxInitialize();
-    socket.emit('player_position_request', '');
-    socket.emit('player_list_request', '');
-    document.removeEventListener('mousedown', loginMenuHandler, false);
-    window.onkeydown = keyDownHandler;
-    window.onkeyup = keyUpHandler;
-    drawGame();
-}
-
-/*
-*    Adds the chat box to the client,
-*    as well as adding a user to the drop
-*    box to allow for private messaging
-*/
-function playerAddition(name) {
-    var newPlayer = document.createElement('section');
-    newPlayer.id = 'playerlist-' + name;
-    newPlayer.className = 'players';
-    newPlayer.textContent = name;
-    element('global-chat-players').appendChild(newPlayer);
-}
-
-
-/*
-*    Emits a login request that sends in the
-*    the username and a hashed password to
-*    the controller
-*/
-function loginRequest() {
-    socket.emit('login_request', {
-        username : element('login-username').value,
-        password : sha256_digest(element('login-password').value)
-    });
-    return false;
-}
-
-
-/*
-*    Performs  a register request, which compares the
-*    two typed passwords ensuring they match, and
-*    if they do it emits a request to check if the name
-*    is open
-*/
-function registerRequest() {
-    if (/^[a-z0-9_]+$/i.test(element('register-username').value)) {
-        if (element('register-password1').value === element('register-password2').value &&
-            element('register-password1').value.length >= 6)
-            socket.emit('open_name_request', element('register-username').value);
-        else
-            alert('passwords do not match or are less than 6 characters');
-    }
-    else
-        alert('Name can only contain numbers, letters, and _')
-    return false;
-}
-
-
-/*
-*    Initializes customization after the new user is
-*    created. Removes the registration box and draws
-*    the customization canvas.
-*/
-function initRegistration() {
-    document.removeEventListener('mousedown', loginMenuHandler, false);
-    element('register').style.display = 'none';
-    document.addEventListener('mousedown', creationClickHandler, false);
-    creationMenuDraw();
 }
 
 var newPlayerInfo = {
@@ -440,13 +328,29 @@ var strokes = ['#50585F', '#5A4B37', '#005F5F', '#0C5F34', '#505F5F', '#55553C',
               '#005F5F', '#000009', '#000909', '#280402', '#191919', '#001F00',
               '#2D2707', '#090009', '#101707', '#5F1A00', '#18112C', '#190000'];
 
+function registerCreation() {
+    var shape;
+    if (newPlayerInfo.shapeIndex === 0)
+        shape = 'square';
+    else if (newPlayerInfo.shapeIndex === 1)
+        shape = 'circle';
+    else if (newPlayerInfo.shapeIndex === 2)
+        shape = 'triangle';
+    else if (newPlayerInfo.shapeIndex === 3)
+        shape = 'star';
+    else if (newPlayerInfo.shapeIndex === 4)
+        shape = 'pentagram';
+    var block = {
+        username : elt('register-username').value,
+        password : sha256_digest(elt('register-password1').value),
+        color    : colors[newPlayerInfo.colorIndex],
+        shape    : shape,
+        stroke   : strokes[newPlayerInfo.strokeIndex]
+    };
+    socket.emit('registerRequest', block);
+    document.removeEventListener('mousedown', creationClickHandler, false);
+}
 
-/*
-*    Draws the menu for character creation,
-*    including the model of the character as
-*    well as the buttons for change between
-*    shapes and colors
-*/
 function creationMenuDraw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.beginPath();
@@ -575,342 +479,30 @@ function creationMenuDraw() {
     ctx.font = '40px Helvetica';
     ctx.fillStyle = 'black';
     ctx.textAlign = 'left';
-    ctx.fillText(newPlayerInfo.openName, 20, 440);
-
+    ctx.fillText(elt('register-username').value, 20, 440);
 }
 
-function drawGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (var key in players) {
-        ctx.beginPath();
-        if (players[key].shape === 'square')
-            ctx.rect(players[key].posx, players[key].posy, 20, 20);
-        else if (players[key].shape === 'circle')
-            ctx.arc(players[key].posx + 10, players[key].posy + 10, 10, 0, 2*Math.PI);
-        else if (players[key].shape === 'triangle') {
-            ctx.moveTo(players[key].posx + 10, players[key].posy);
-            ctx.lineTo(players[key].posx, players[key].posy + 20);
-            ctx.lineTo(players[key].posx + 20, players[key].posy + 20);
-            ctx.lineTo(players[key].posx + 10, players[key].posy);
-        }
-        else if (players[key].shape === 'star') {
-            ctx.moveTo(players[key].posx + 10, players[key].posy);
-            ctx.lineTo(players[key].posx + 18, players[key].posy + 20);
-            ctx.lineTo(players[key].posx, players[key].posy + 7);
-            ctx.lineTo(players[key].posx + 20, players[key].posy + 7);
-            ctx.lineTo(players[key].posx + 2, players[key].posy + 20);
-            ctx.lineTo(players[key].posx + 10, players[key].posy);
-        }
-        else if (players[key].shape === 'pentagram') {
-            ctx.moveTo(players[key].posx + 10, players[key].posy);
-            ctx.lineTo(players[key].posx + 17.0710678119, players[key].posy + 17.0710678119);
-            ctx.lineTo(players[key].posx + 1.33974596216, players[key].posy + 5);
-            ctx.lineTo(players[key].posx + 18.6602540378, players[key].posy + 5);
-            ctx.lineTo(players[key].posx + 2.92893218813, players[key].posy + 17.0710678119);
-            ctx.lineTo(players[key].posx + 10, players[key].posy);
-        }
-        ctx.fillStyle = players[key].color;
-        ctx.fill();
-        ctx.strokeStyle = players[key].stroke;
-        ctx.stroke();
-        ctx.closePath();
-        if (players[key].shape === 'pentagram') {
-            ctx.beginPath();
-            ctx.arc(players[key].posx + 10, players[key].posy + 10, 10, 0, 2*Math.PI);
-            ctx.strokeStyle = players[key].stroke;
-            ctx.stroke();
-            ctx.closePath();
-        }
-    }
-    for (var key in messages) {
-        if (messages[key].time > Date.now() - 10000) {
-            ctx.font = '20px Helvetica';
-            ctx.textAlign = 'center';
-            ctx.fillStyle = messages[key].color;
-            ctx.fillText(messages[key].message, players[key].posx + 10, players[key].posy - 10, 200);
-        }
-    }
+function typingMessage() {
+    window.onkeydown = function(){};
 }
 
-function drawRPS(msg) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    ctx.font = '30px helvetica';
-    ctx.textAlign = 'center';
-    ctx.fillStyle = 'black';
-    ctx.fillText('ROCK, PAPER, SCISSORS', canvas.width / 2, 40);
-
-    ctx.font = '20px Helvetica';
-    ctx.fillStyle = 'blue';
-    if (rpsSelected === 'Rock') {
-        ctx.beginPath();
-        ctx.rect(canvas.width / 2 - 100, 92.5, 200, 30);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.closePath();
-    }
-    ctx.fillStyle = 'blue';
-    ctx.fillText('Rock', canvas.width / 2, 115);
-    if (rpsSelected === 'Paper') {
-        ctx.beginPath();
-        ctx.rect(canvas.width / 2 - 100, 142.5, 200, 30);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.closePath();
-    }
-    ctx.fillStyle = 'blue';
-    ctx.fillText('Paper', canvas.width / 2, 165);
-    if (rpsSelected === 'Scissors') {
-        ctx.beginPath();
-        ctx.rect(canvas.width / 2 - 100, 192.5, 200, 30);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.closePath();
-    }
-    ctx.fillStyle = 'blue';
-    ctx.fillText('Scissors', canvas.width / 2, 215.5);
+function notTypingMessage() {
+    window.onkeydown = gameKeyDown;
 }
 
-function drawRPSResult(msg) {
-    ctx.fillStyle = 'black';
-    ctx.font = '40px Helvetica';
-    ctx.fillText('YOU ' + msg + '!', canvas.width / 2, 300);
-
-    ctx.beginPath();
-    ctx.rect(canvas.width / 2 - 50, 350, 100, 30);
-    ctx.fillStyle = 'green';
-    ctx.fill();
-    ctx.closePath();
-
-    ctx.fillStyle = 'black';
-    ctx.font = '20px Helvetica';
-    ctx.fillText('ESCAPE', canvas.width / 2, 372);
-
-}
-
-function snakeDraw(msg) {
-    ctx.clearRect(0, 0, canvas.height, canvas.height);
-    ctx.beginPath();
-    ctx.rect(20, 20, canvas.height - 40, canvas.height - 40);
-    ctx.fillStyle = 'white';
-    ctx.fill();
-    ctx.closePath();
-    for (var i = 0; i < msg.snake.length; i++) {
-        ctx.beginPath();
-        ctx.rect(msg.snake[i].posx * 20, msg.snake[i].posy * 20, 20, 20);
-        ctx.fillStyle = 'red';
-        ctx.fill();
-        ctx.closePath();
-    }
-    ctx.beginPath();
-    ctx.rect(msg.snack.posx * 20, msg.snack.posy * 20, 20, 20);
-    ctx.fillStyle = 'blue';
-    ctx.fill();
-    ctx.closePath();
-
-    ctx.rect(canvas.height, 20, canvas.width - canvas.height - 20, canvas.height - 40);
-    ctx.fillStyle = 'blue';
-    ctx.fill();
-    ctx.closePath();
-
-    for (var i = 0; i < snakeGameList.length; i++) {
-        ctx.font = '20px Helvetica';
-        ctx.textAlign = 'left';
-        ctx.fillStyle = 'black';
-        ctx.fillText(snakeGameList[i].score + ' ' + snakeGameList[i].username,
-                     canvas.height + 20, 50 + (22 * i));
-    }
-    ctx.font = '20px Helvetica';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = 'black';
-    ctx.fillText("Score: " + (msg.snake.length - 1), canvas.height + 4, canvas.height - 30);
-}
-
-function chatBoxInitialize() {
-    element('login').style.display = 'none';
-    element('register').style.display = 'none';
-    element('chat-box-dropdown').style.display = 'block';
-    element('chat-box').style.display = 'block';
-    element('message-form').style.display = 'block';
-    element('playerlist-box').style.display = 'block';
-
-    element('message-form').onsubmit = messagePost;
-    element('message-input').onfocus = writing;
-    element('message-input').onblur = notWriting;
-    currentChatGroup = 'global';
-    element('chat-box-dropdown').onchange = chatBoxChanger;
-
-}
-
-function chatBoxUninitialize() {
-    element('chat-box-dropdown').style.display = 'none';
-    element('chat-box').style.display = 'none';
-    element('message-form').style.display = 'none';
-    element('playerlist-box').style.display = 'none';
-}
-
-function chatBoxChanger() {
-    var selected = element('chat-box-dropdown').value;
-    if (currentChatGroup === 'global')
-        element('global-chat-messages').style.display = 'none';
-    else
-        element('chat-messages-player-' + currentChatGroup).style.display = 'none';
-    if (selected === 'global') {
-        element('global-chat-messages').style.display = 'block';
-        element('message-form').onsubmit = messagePost;
-    }
-    else {
-        selected = selected.substr(1);
-        element('chat-messages-player-' + selected).style.display = 'block';
-        element('message-form').onsubmit = privateMessagePost;
-    }
-    currentChatGroup = selected;
-}
-
-function messagePost() {
-    socket.emit('message_post', element('message-input').value);
-    element('message-input').value = '';
-    return false;
-}
-
-function privateMessagePost() {
-    var message = {
-        destination  : currentChatGroup,
-        message      : element('message-input').value
-    };
-    socket.emit('private_message_post', message);
-    element('message-input').value = '';
-    return false;
-}
-
-function directionUpdate() {
-    var dir = null;
-    if (direction.up && !direction.down) {
-        if (direction.left && !direction.right)
-            dir = 'up-left';
-        else if (direction.right && !direction.left)
-            dir = 'up-right';
-        else
-            dir = 'up';
-    }
-    else if (direction.down && !direction.up) {
-        if (direction.left && !direction.right)
-            dir = 'down-left';
-        else if (direction.right && !direction.left)
-            dir = 'down-right';
-        else
-            dir = 'down';
-    }
-    else if (direction.left && !direction.right)
-        dir = 'left';
-    else if (direction.right && !direction.left)
-        dir = 'right';
-    socket.emit('direction_update', dir);
-}
-
-function registerCreation() {
-    var shape;
-    if (newPlayerInfo.shapeIndex === 0)
-        shape = 'square';
-    else if (newPlayerInfo.shapeIndex === 1)
-        shape = 'circle';
-    else if (newPlayerInfo.shapeIndex === 2)
-        shape = 'triangle';
-    else if (newPlayerInfo.shapeIndex === 3)
-        shape = 'star';
-    else if (newPlayerInfo.shapeIndex === 4)
-        shape = 'pentagram';
-    var block = {
-        username : newPlayerInfo.openName,
-        password : sha256_digest(element('register-password1').value),
-        color    : colors[newPlayerInfo.colorIndex],
-        shape    : shape,
-        stroke   : strokes[newPlayerInfo.strokeIndex]
-    };
-    socket.emit('register_request', block);
-    document.removeEventListener('mousedown', creationClickHandler, false);
-}
-
-function writing() {
-    window.onkeydown = function() {};
-    window.onkeyup = function() {};
-}
-
-function notWriting() {
-    window.onkeydown = keyDownHandler;
-    window.onkeyup = keyUpHandler;
-}
-
-function element(id) {
-    return document.getElementById(id);
-}
-
-// EVENT LISTENERS
-function loginMenuHandler(evt) {
+function startMenuHandler(evt) {
     var relativeX = evt.clientX - canvas.offsetLeft;
     var relativeY = evt.clientY - canvas.offsetTop;
     if (relativeX >= canvas.width / 2 - 130 && relativeX <= canvas.width / 2 - 20 &&
         relativeY >= 270 && relativeY <= 300) {
-        element('register').style.display = 'none';
-        element('login').style.display = 'block';
+        elt('register').style.display = 'none';
+        elt('login').style.display = 'block';
     }
     if (relativeX >= canvas.width / 2 + 20 && relativeX <= canvas.width / 2 + 110 &&
         relativeY >= 270 && relativeY <= 300) {
-        element('login').style.display = 'none';
-        element('register').style.display = 'block';
+        elt('login').style.display = 'none';
+        elt('register').style.display = 'block';
     }
-}
-
-function keyDownHandler(evt) {
-    var changed = false;
-    if (evt.keyCode == 38 || evt.keyCode == 87 && !direction.up) {
-        direction.up = true;
-        changed = true;
-    }
-    else if (evt.keyCode == 37 || evt.keyCode == 65 && !direction.left) {
-        direction.left = true;
-        changed = true;
-    }
-    else if (evt.keyCode == 39 || evt.keyCode == 68 && !direction.right) {
-        direction.right = true;
-        changed = true;
-    }
-    else if (evt.keyCode == 40 || evt.keyCode == 83 && !direction.down) {
-        direction.down = true;
-         changed = true;
-    }
-    if (changed)
-        directionUpdate();
-}
-
-function keyUpHandler(evt) {
-    var changed = false;
-    if (evt.keyCode == 38 || evt.keyCode == 87) {
-        if (direction.up) {
-            direction.up = false;
-            changed = true;
-        }
-    }
-    else if (evt.keyCode == 37 || evt.keyCode == 65) {
-        if (direction.left) {
-            direction.left = false;
-            changed = true;
-        }
-    }
-    else if (evt.keyCode == 39 || evt.keyCode == 68) {
-        if (direction.right) {
-            direction.right = false;
-            changed = true;
-        }
-    }
-    else if (evt.keyCode == 40 || evt.keyCode == 83) {
-        if (direction.down) {
-            direction.down = false;
-            changed = true;
-        }
-    }
-    if (changed)
-        directionUpdate();
 }
 
 function creationClickHandler(evt) {
@@ -966,49 +558,220 @@ function creationClickHandler(evt) {
     }
 }
 
-function snakeHandler(evt) {
-    var direction = null;
+function gameKeyDown(evt) {
+    var changed = false;
+    if (evt.keyCode == 38 || evt.keyCode == 87 && !direction.up) {
+        direction.up = true;
+        changed = true;
+    }
+    else if (evt.keyCode == 37 || evt.keyCode == 65 && !direction.left) {
+        direction.left = true;
+        changed = true;
+    }
+    else if (evt.keyCode == 39 || evt.keyCode == 68 && !direction.right) {
+        direction.right = true;
+        changed = true;
+    }
+    else if (evt.keyCode == 40 || evt.keyCode == 83 && !direction.down) {
+        direction.down = true;
+         changed = true;
+    }
+    if (changed)
+        directionUpdate();
+}
+
+function gameKeyUp(evt) {
+    var changed = false;
     if (evt.keyCode == 38 || evt.keyCode == 87) {
-        direction = 'up';
+        if (direction.up) {
+            direction.up = false;
+            changed = true;
+        }
     }
     else if (evt.keyCode == 37 || evt.keyCode == 65) {
-        direction = 'left';
+        if (direction.left) {
+            direction.left = false;
+            changed = true;
+        }
     }
     else if (evt.keyCode == 39 || evt.keyCode == 68) {
-        direction = 'right';
+        if (direction.right) {
+            direction.right = false;
+            changed = true;
+        }
     }
     else if (evt.keyCode == 40 || evt.keyCode == 83) {
-        direction = 'down';
+        if (direction.down) {
+            direction.down = false;
+            changed = true;
+        }
     }
-    socket.emit('snake_direction_update', direction);
+    if (changed)
+        directionUpdate();
 }
 
-function rpsHandler(evt) {
-    var selected = null;
-    var relativeX = evt.clientX - canvas.offsetLeft;
-    var relativeY = evt.clientY - canvas.offsetTop;
-    if (relativeX > canvas.width / 2 - 200 && relativeX < canvas.width / 2 + 200) {
-        if (relativeY >= 92.5 && relativeY <= 122.5)
-            selected = 'Rock';
-        else if (relativeY >= 142.5 && relativeY <= 172.5)
-            selected = 'Paper';
-        else if (relativeY >= 192.5 && relativeY <= 222.5)
-            selected = 'Scissors';
+function chatBoxHandler() {
+    var selected = elt('chat-box-dropdown').value;
+    var chatMessages = document.getElementsByClassName('messages');
+    for (var i = 0; i < chatMessages.length; i++)
+        chatMessages[i].style.display = 'none';
+    if (selected === 'global') {
+        elt('global-chat-messages').style.display = 'block';
+        elt('message-form').onsubmit = sendMessage;
     }
-    if (selected) {
-        rpsSelected = selected;
-        drawRPS();
-        socket.emit('rps_update', selected);
+    else {
+        selected = selected.substr(1);
+        elt('chat-messages-player-' + selected).style.display = 'block';
+        elt('message-form').onsubmit = sendPM;
     }
-
 }
 
-function rpsExitHandler(evt) {
-    var relativeX = evt.clientX - canvas.offsetLeft;
-    var relativeY = evt.clientY - canvas.offsetTop;
-    if (relativeX >= canvas.width / 2 - 50 && relativeX <= canvas.width / 2 + 50 &&
-        relativeY >= 350 && relativeY <= 380) {
-        gameInit();
-        window.onclick = null;
+// INIT SOCKET
+function initSockets() {
+    socket = io();
+    socket.on('loginResponse', function(msg) {socketFunctions.loginResponse(msg);});
+    socket.on('registerResponse', function(msg) {socketFunctions.registerResponse(msg);});
+    socket.on('openNameResponse', function(msg) {socketFunctions.openNameResponse(msg);});
+    socket.on('playerListResponse', function(msg) {socketFunctions.playerListResponse(msg);});
+    socket.on('globalAddition', function(msg) {socketFunctions.globalAddition(msg);});
+    socket.on('friendAddition', function(msg) {socketFunctions.friendAddition(msg);});
+    socket.on('playerRemoval', function(msg) {socketFunctions.playerRemoval(msg);});
+    socket.on('zoneAddition', function(msg) {socketFunctions.zoneAddition(msg);});
+    socket.on('zoneUpdate', function(msg) {socketFunctions.zoneUpdate(msg);});
+    socket.on('currentZone', function(msg) {socketFunctions.currentZone(msg);});
+    socket.on('newMessage', function(msg) {socketFunctions.newMessage(msg);});
+    socket.on('newPM', function(msg) {socketFunctions.newPM(msg);});
+    socket.on('stopGame', function(msg) {socketFunctions.stopGame();});
+    socket.on('disconnect', function(msg) {alert('lost connection to server');});
+}
+
+// INIT LOGIN SOCKET FUNCTIONS
+function startLoginFunctions() {
+    socketFunctions.loginResponse = function(msg) {
+        if (msg) {
+            stopMenu();
+            stopLoginFunctions();
+            stopCreationMenu();
+            startGameFunctions();
+            startGame();
+            startChatBox();
+        }
+        else
+            alert('error');
+    };
+    socketFunctions.registerResponse = function(msg) {
+        if (msg) {
+            stopMenu();
+            stopLoginFunctions();
+            stopCreationMenu();
+            startGameFunctions();
+            startGame();
+            startChatBox();
+        }
+    };
+    socketFunctions.openNameResponse = function(msg) {
+        if (msg){
+            stopMenu();
+            startCreationMenu();
+        }
+        else
+            alert('Name unavailable');
+    };
+}
+
+// UNITIALIZE SOCKET FUNCTIONS
+function stopLoginFunctions() {
+    socketFunctions.loginResponse = function(){};
+    socketFunctions.registerResponse = function(){};
+    socketFunctions.openNameResponse = function(){};
+}
+
+function startGameFunctions() {
+    socketFunctions.globalAddition = function(msg) {
+        playerListAdd(msg);
+    };
+    socketFunctions.playerListResponse = function(msg) {
+        for (var i = 0; i < msg.length; i++)
+            playerListAdd(msg[i]);
+    };
+    socketFunctions.zoneAddition = function(msg) {
+        players[msg.username] = msg;
+        drawGame();
+    };
+    socketFunctions.friendAddition = function(msg) {
+        addFriend(msg);
+    };
+    socketFunctions.playerRemoval = function(msg) {
+        if (elt('playerlist-' + msg))
+            elt('global-chat-players').removeChild(elt('playerlist-' + msg));
+        if (elt('chat-messages-player-' + msg)) {
+            elt('chat-box').removeChild(elt('chat-messages-player-' + msg));
+            if (elt('chat-box-dropdown').value === msg) {
+                elt('global-chat-messages').style.display = 'block';
+                elt('message-form').onsubmit = sendMessage;
+            }
+            elt('chat-box-dropdown').removeChild(elt('drop-down-' + msg));
+        }
     }
+    socketFunctions.zoneAddition = function(msg) {
+        players[msg.username] = msg;
+        drawGame();
+    };
+    socketFunctions.zoneUpdate = function(msg) {
+        players = msg;
+        drawGame();
+    };
+    socketFunctions.currentZone = function(msg) {
+        elt('myCanvas').style.backgroundImage = "url(/img/" + msg + ".png)";
+    }
+    socketFunctions.newMessage = function(msg) {
+        var newMessage = elt('message-template').content.cloneNode(true);
+        newMessage.querySelector('.message-username').textContent = msg.username;
+        newMessage.querySelector('.message-content').textContent = msg.message;
+        elt('global-chat-messages').appendChild(newMessage);
+        elt('chat-box').scrollTop = elt('chat-box').scrollHeight;
+        if (!messages[msg.username])
+            messages[msg.username] = {};
+        messages[msg.username].message = msg.message;
+        messages[msg.username].time = Date.now();
+        messages[msg.username].color = 'black';
+        drawGame();
+    }
+    socketFunctions.newPM = function(msg) {
+        console.log(msg);
+        var newMessage = elt('message-template').content.cloneNode(true);
+        newMessage.querySelector('.message-username').textContent = msg.source;
+        newMessage.querySelector('.message-content').textContent = msg.message;
+        var group = msg.destination;
+        if (msg.reciever)
+            group = msg.source;
+        elt('chat-messages-player-' + group).appendChild(newMessage);
+        elt('chat-box').scrollTop = elt('chat-box').scrollHeight;
+        if (!messages[msg.source])
+            messages[msg.source] = {};
+        messages[msg.source].message = msg.message;
+        messages[msg.source].time = Date.now();
+        messages[msg.source].color = 'red';
+        drawGame();
+    }
+    socketFunctions.stopGame = function() {
+        stopGame();
+        stopChatBox();
+        startLoginFunctions();
+        startMenu();
+    }
+}
+
+function stopGameFunctions() {
+    socketFunctions.globalAddition = function(msg) {};
+    socketFunctions.playerListResponse = function(msg) {};
+    socketFunctions.zoneAddition = function(msg) {};
+    socketFunctions.friendAddition = function(msg) {};
+    socketFunctions.playerRemoval = function(msg) {}
+    socketFunctions.zoneAddition = function(msg) {};
+    socketFunctions.zoneUpdate = function(msg) {};
+    socketFunctions.currentZone = function(msg) {};
+    socketFunctions.newMessage = function(msg) {};
+    socketFunctions.newPM = function(msg) {};
+    socketFunctions.stopGame = function() {};
 }

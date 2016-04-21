@@ -1,564 +1,471 @@
-var user = require(__dirname + '/database.js').user;
-var friend = require(__dirname + '/database.js').friend;
-var database = require(__dirname + '/database.js').sequelize;
-var snakeScore = require(__dirname + '/database.js').snakeScore;
-var banned = require(__dirname + '/database.js').ban;
+var database = require(__dirname + '/models/database.js');
+var user = require(__dirname + '/models/user.js');
+var snakeScore = require(__dirname + '/models/snakescore.js');
+var friend = require(__dirname + '/models/friend.js');
+var banned = require(__dirname + '/models/ban.js');
+var objectAssign = require('object-assign');
 
 database.sync();
 
-var snakeGame = {};
-var snakePlayers = {};
-var rpsChallenge = {};
-var rpsGame = {};
-var clients = {};
-clients['0_0'] = {};
+var clients = {
+    '0_0': {},
+    '0_1': {}
+};
+var bySocket = {};
+var byName = {};
 
-function snakeListAsArray(record) {
-    return {
-        username : record.username,
-        score    : record.score
-    };
-}
-
-function login_request(socket, msg) {
-    user.findOne({where : {
-        username : msg.username,
-        password : msg.password
+function loginRequest(socket, msg) {
+    user.findOne({where: {
+        username: msg.username,
+        password: msg.password
     }}).then(function(player) {
-        if (player && !player.banned && !(player.username in clients)) {
-            socket.handshake.session.username = player.username;
+        if (player && !(player.username in byName)) {
             var zone = player.sectionX + '_' + player.sectionY;
-            socket.handshake.session.zone = zone;
-            clients[zone][player.username] = {
-                record : player,
-                socketID : socket.id,
-                direction : null
+            bySocket[socket.id] = {
+                zone: zone,
+                name: player.username
             };
-            socket.join(zone);
-            socket.emit('login_response', true);
-            client_addition(socket, player);
+            byName[player.username] = {
+                zone: zone,
+                socketID: socket.id
+            };
+            clients[zone][player.username] = {
+                record: player,
+                direction: null,
+            };
+            newClient(socket);
+            socket.emit('loginResponse', true);
         }
         else
-            socket.emit('login_response', false);
+            socket.emit('loginResponse', false);
     });
 }
 
-function register_request(socket, msg) {
-    if (/^[a-z0-9_]+$/i.test(msg.username)) {
-        banned.findOne({where : {username : msg.username}})
-        .then(function(banned) {
-            if (!banned) {
-                user.findOne({where : {username : msg.username}})
-                .then(function(player) {
-                    if (!player) {
+function registerRequest(socket, msg) {
+    if (/^[a-z0-9_]+$/i.text(msg.username) && msg.password.length >= 6) {
+        banned.findOne({where: {username: msg.username}}).then(function(bannedName) {
+            if(!bannedName)
+                user.findOne({where: {username: msg.username}}).then(function(player) {
+                    if (!player)
                         user.create({
-                            username : msg.username,
-                            password : msg.password,
-                            color    : msg.color,
-                            shape    : msg.shape,
-                            sectionX : 0,
-                            sectionY : 0,
-                            stroke   : msg.stroke,
-                            posx     : 1,
-                            posy     : 1,
-                            admin    : false,
-                            banned   : false
+                            username: msg.username,
+                            password: msg.password,
+                            color: msg.color,
+                            shape: msg.shape,
+                            stroke: msg.stroke,
+                            sectionX: 0,
+                            sectionY: 0,
+                            posX: 0,
+                            posY: 0,
+                            admin: false,
+                            banned: false
                         }).then(function(newPlayer) {
-                            socket.handshake.session.username = newPlayer.username;
                             var zone = newPlayer.sectionX + '_' + newPlayer.sectionY;
-                            socket.handshake.session.zone = zone;
-                            clients[zone][newPlayer.username] = {
-                                record    : newPlayer,
-                                socketID  : socket.id,
-                                direction : null
+                            bySocket[socket.id] = {
+                                zone: zone,
+                                name: newPlayer.username
                             };
-                            socket.join(zone);
-                            socket.emit('register_response', true);
-                            client_addition(socket, newPlayer);
+                            byName[newPlayer.username] = {
+                                zone: zone,
+                                socketID: socket.id
+                            };
+                            clients[zone][newPlayer.username] = {
+                                record: newPlayer,
+                                direction: null
+                            };
+                            newClient(socket);
+                            socket.emit('registerResponse', true);
                         });
-                    }
+                    else
+                        socket.emit('registerResponse', false);
                 });
-            }
+            else
+                socket.emit('registerResponse', false);
         });
     }
     else
-        socket.emit('register_response', false);
+        socket.emit('registerResponse', false);
 }
 
-function open_name_request(socket, msg) {
-    banned.findOne({where : {username : msg}})
-    .then(function(banned) {
-        if (!banned) {
-            user.findOne({where : {username : msg}})
-            .then(function(player) {
+function openNameRequest(socket, msg) {
+    banned.findOne({where: {username: msg}}).then(function(bannedName) {
+        if (!bannedName)
+            user.findOne({where: {username: msg}}).then(function(player) {
                 if (!player)
-                    socket.emit('open_name_response', msg);
+                    socket.emit('openNameResponse', true);
                 else
-                    socket.emit('open_name_response', false);
+                    socket.emit('openNameResponse', false);
             });
-        }
         else
-            socket.emit('open_name_response', false);
+            socket.emit('openNameResponse', false);
     });
 }
 
-function direction_update(socket, msg) {
-    if (socket.handshake.session.username in clients)
-        clients[socket.handshake.session.username].direction = msg;
+function playerListRequest(socket) {
+    var response = [];
+    for (var name in byName)
+        response.push(name);
+    socket.emit('playerListResponse', response);
 }
 
-function client_addition(socket, record) {
-    var zone = socket.handshake.session.zone;
-    socket.broadcast.emit('player_addition', record.username);
-    socket.broadcast.to(zone).emit('zone_addition', record.asArray());
-    friend.findAll({where : {username : socket.handshake.session.username}})
-    .then(function(relationships) {
-        relationships.forEach(function(relationship) {
-            if (relationship.friend in clients) {
-                friend.findOne({where : {
-                    username : relationship.friend,
-                    friend   : relationship.username
+function newClient(socket) {
+    globalAddition(socket);
+    zoneAddition(socket);
+    friendAddition(socket);
+}
+
+function globalAddition(socket) {
+    socket.broadcast.emit('globalAddition', bySocket[socket.id].name);
+}
+
+function zoneAddition(socket) {
+    for (var username in clients[bySocket[socket.id].zone])
+        socket.broadcast.to(byName[username].socketID).emit('zoneAddition',
+            clients[bySocket[socket.id].zone][bySocket[socket.id].name].record.asArray());
+}
+
+function friendAddition(socket) {
+    friend.findAll({where: {username: bySocket[socket.id].name}}).then(function(friendships) {
+        friendships.forEach(function (friendship) {
+            if (friendship.friend in byName)
+                friend.findOne({where: {
+                    username: friendship.friend,
+                    friend: friendship.username
                 }}).then(function(mutual) {
                     if (mutual) {
-                        socket.broadcast.to(clients[mutual.username].socketID).emit('friend_addition', mutual.friend);
-                        socket.emit('friend_addition', mutual.username);
+                        socket.broadcast.to(byName[mutual.username].socketID).emit('friendAddition', mutual.friend);
+                        socket.emit('friendAddition', mutual.username);
                     }
                 });
-            }
         });
     });
 }
 
-function client_removal(socket) {
-    if (socket.handshake.session.username) {
-        if (socket.handshake.session.username in rpsChallenge) {
-            if (rpsChallenge[rpsChallenge[socket.handshake.session.username]] === socket.handshake.session.username) {
-                socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.username]].socketID).emit('rps_result', 'won');
-                delete rpsChallenge[socket.handshake.session.username];
-                delete rpsChallenge[rpsChallenge[socket.handshake.session.username]];
-            }
-        }
-        if (socket.handshake.session.username in clients) {
-            clients[socket.handshake.session.username].record.save();
-            socket.broadcast.emit('player_removal', socket.handshake.session.username);
-        }
-        delete clients[socket.handshake.session.username];
+function clientRemoval(socket) {
+    if (socket.id in bySocket) {
+        socket.broadcast.emit('playerRemoval', bySocket[socket.id].name);
+        delete clients[bySocket[socket.id].zone][bySocket[socket.id].name];
+        var id = socket.id;
+        delete byName[bySocket[socket.id].name];
+        delete bySocket[id];
     }
 }
 
-function player_position_request(socket) {
+function zoneRequest(socket) {
+    if (socket.id in bySocket) {
+        var response = {};
+        for (var name in clients[bySocket[socket.id].zone])
+            response[name] = clients[bySocket[socket.id].zone][name].record.asArray();
+        socket.emit('zoneUpdate', response);
+    }
+}
+
+function zoneUpdate(io, zone) {
     var response = {};
-    for (var key in clients[socket.handshake.session.zone])
-        response[key] = clients[socket.handshake.session.zone][key].record.asArray();
-    socket.emit('player_position_response', response);
+    for (var name in clients[zone])
+        response[name] = clients[zone][name].record.asArray();
+    for (var name in clients[zone])
+        io.to(byName[name].socketID).emit('zoneUpdate', response);
 }
 
-function message_post(io, socket, msg) {
-    if (msg.charAt(0) === '/') {
-        command(socket.handshake.session.username, msg.split(' '), io, socket);
-    }
-    else {
-        var message = {
-            username : socket.handshake.session.username,
-            message  : msg
-        };
-        io.emit('message_post', message);
-    }
-}
-
-function private_message_post(socket, msg) {
-    var message = {
-        reciever : msg.destination,
-        sender : socket.handshake.session.username,
-        message : msg.message
-    };
-    socket.broadcast.to(clients[message.reciever].socketID).emit('private_message', message);
-    socket.emit('private_message', message);
-}
-
-function player_list_request(socket) {
-    var response = [];
-    for (var key in clients)
-        response.push(key);
-    response.splice(response.indexOf(socket.handshake.session.username), 1);
-    socket.emit('player_list_response', response);
-}
-
-function positionUpdate(socket) {
-    var movement = false;
-    for (var key in clients) {
-        switch(clients[key].direction) {
-            case 'left':
-                if (clients[key].record.posx > 0) {
-                    clients[key].record.posx = clients[key].record.posx - 1;
-                    movement = true;
-                }
-                break;
-            case 'right':
-                if (clients[key].record.posx < 700) {
-                    clients[key].record.posx = clients[key].record.posx + 1;
-                    movement = true;
-                }
-                break;
-            case 'up':
-                if (clients[key].record.posy > 0) {
-                    clients[key].record.posy = clients[key].record.posy - 1;
-                    movement = true;
-                }
-                break;
-            case 'down':
-                if (clients[key].record.posy < 460) {
-                    clients[key].record.posy = clients[key].record.posy + 1;
-                    movement = true;
-                }
-                break;
-            case 'up-left':
-                if (clients[key].record.posy > 0 && clients[key].record.posx > 0) {
-                    clients[key].record.posy = clients[key].record.posy - 0.707106781187;
-                    clients[key].record.posx = clients[key].record.posx - 0.707106781187;
-                    movement = true;
-                }
-                break;
-            case 'up-right':
-                if (clients[key].record.posy > 0 && clients[key].record.posx < 700) {
-                    clients[key].record.posy = clients[key].record.posy - 0.707106781187;
-                    clients[key].record.posx = clients[key].record.posx + 0.707106781187;
-                    movement = true;
-                }
-                break;
-            case 'down-left':
-                if (clients[key].record.posy < 460 && clients[key].record.posx > 0) {
-                    clients[key].record.posy = clients[key].record.posy + 0.707106781187;
-                    clients[key].record.posx = clients[key].record.posx - 0.707106781187;
-                    movement = true;
-                }
-                break;
-            case 'down-right':
-                if (clients[key].record.posy < 460 && clients[key].record.posx < 700) {
-                    clients[key].record.posy = clients[key].record.posy + 0.707106781187;
-                    clients[key].record.posx = clients[key].record.posx + 0.707106781187;
-                    movement = true;
-                }
-                break;
-        }
-    }
-    if (movement)
-        player_position_request(socket);
-}
-
-function block(posx, posy) {
-    this.posx = posx;
-    this.posy = posy;
-}
-
-function rps_game_init(socket, target) {
-    rpsChallenge[socket.handshake.session.username] = target
-    socket.broadcast.to(clients[target].socketID).emit('rps_invite', socket.handshake.session.username);
-}
-
-function rps_update(socket, msg) {
-    rpsGame[socket.handshake.session.username] = msg;
-    if (rpsGame[rpsChallenge[socket.handshake.session.username]]) {
-        var player1Choice = rpsGame[socket.handshake.session.username];
-        var player2Choice = rpsGame[rpsChallenge[socket.handshake.session.username]];
-        var result;
-        if (player1Choice && player2Choice && player1Choice === player2Choice)
-            result = 'tied';
-        else if (player1Choice === 'Rock' && player2Choice === 'Scissors')
-            result = 'won';
-        else if (player1Choice === 'Scissors' && player2Choice === 'Paper')
-            result = 'won';
-        else if (player1Choice === 'Paper' && player2Choice === 'Rock')
-            result = 'won';
-        else if (player1Choice === 'Rock' && player2Choice === 'Paper')
-            result = 'lost';
-        else if (player1Choice === 'Scissors' && player2Choice === 'Rock')
-            result = 'lost';
-        else if (player1Choice === 'Paper' && player2Choice === 'Scissors')
-            result = 'lost';
-        if (result === 'won') {
-            socket.emit('rps_result', result);
-            socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.username]].socketID).emit(
-                'rps_result', 'lost');
-        }
-        else if (result === 'lost') {
-            socket.emit('rps_result', result);
-            socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.username]].socketID).emit(
-                'rps_result', 'won');
-        }
+function messagePost(socket, msg) {
+    if (socket.id in bySocket)
+        if (msg.charAt(0) === '/')
+            commandAttempt(bySocket[socket.id].name, msg.split(' '), socket);
         else {
-            socket.emit('rps_result', result);
-            socket.broadcast.to(clients[rpsChallenge[socket.handshake.session.username]].socketID).emit(
-                'rps_result', 'tied');
-        }
-        delete rpsGame[socket.handshake.session.username];
-        delete rpsGame[rpsChallenge[socket.handshake.session.username]];
-        delete rpsChallenge[rpsChallenge[socket.handshake.session.username]];
-        delete rpsChallenge[socket.handshake.session.username];
-    }
-}
-
-function snake_game_initiate(socket) {
-    snakeScore.findAll({
-        limit : 10,
-        order : '"score" DESC'
-    }).then(function(users) {
-        var list = [];
-        users.forEach(function(user) {
-            list.push(snakeListAsArray(user));
-        });
-        snakePlayers[socket.handshake.session.username] = {
-            snake : null,
-            snack : new block(10, 10),
-            direction : null
-        };
-        snakePlayers[socket.handshake.session.username].snake = [];
-        snakePlayers[socket.handshake.session.username].snake.push(new block(5, 5));
-        socket.emit('initiate_snake', list);
-        snakeGame[socket.handshake.session.username] = setInterval(snake_action, 100,
-        socket, socket.handshake.session.username);
-
-    });
-}
-
-function snake_action(socket, player) {
-    var done = false;
-    if (snakePlayers[player].direction) {
-        if (snakePlayers[player].direction === 'up')
-            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx, snakePlayers[player].snake[0].posy - 1));
-        else if (snakePlayers[player].direction === 'right')
-            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx + 1, snakePlayers[player].snake[0].posy));
-        else if (snakePlayers[player].direction === 'down')
-            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx, snakePlayers[player].snake[0].posy + 1));
-        else if (snakePlayers[player].direction === 'left')
-            snakePlayers[player].snake.unshift(new block(snakePlayers[player].snake[0].posx - 1, snakePlayers[player].snake[0].posy));
-    }
-    for (var i = 1; i < snakePlayers[player].snake.length; i++) {
-        if (snakePlayers[player].snake[0].posx === snakePlayers[player].snake[i].posx &&
-            snakePlayers[player].snake[0].posy === snakePlayers[player].snake[i].posy) {
-            done = true;
-        }
-    }
-    if (snakePlayers[player].snake[0].posx < 1 || snakePlayers[player].snake[0].posx > 22 ||
-        snakePlayers[player].snake[0].posy < 1 || snakePlayers[player].snake[0].posy > 22)
-        done = true;
-    if (snakePlayers[player].snake.length === 484)
-        done = true;
-    if (!done) {
-        if (snakePlayers[player].direction) {
-            if (snakePlayers[player].snake[0].posx !== snakePlayers[player].snack.posx ||
-                snakePlayers[player].snake[0].posy !== snakePlayers[player].snack.posy) {
-                snakePlayers[player].snake.pop();
-            }
-            else {
-                var snackPlaced = false;
-                while (!snackPlaced) {
-                    var newSnack = new block(
-                        Math.floor((Math.random() * 21) + 1),
-                        Math.floor((Math.random() * 21) + 1)
-                    );
-                    var available = true;
-                    for (var i = 0; i < snakePlayers[player].snake.length && !snackPlaced; i++) {
-                        if (newSnack.posx === snakePlayers[player].snake[i].posx &&
-                            newSnack.posy === snakePlayers[player].snake[i].posy)
-                            available = false;
-                    }
-                    if (available) {
-                        snakePlayers[player].snack = newSnack;
-                        snackPlaced = true;
-                    }
-                }
-            }
-        }
-    }
-    if (done || !(player in clients)) {
-        snakeScore.create({
-            username : player,
-            score    : snakePlayers[player].snake.length - 2,
-        });
-        clearInterval(snakeGame[player]);
-        delete snakeGame[player];
-        socket.emit('uninitiate_snake', '');
-    }
-    else {
-        var message = {
-            snake : snakePlayers[player].snake,
-            snack : snakePlayers[player].snack
-        };
-        socket.emit('snake_update', message);
-    }
-}
-
-function snake_direction_update(socket, msg) {
-    if (snakePlayers[socket.handshake.session.username].direction === 'left' && msg !== 'right') {
-        snakePlayers[socket.handshake.session.username].direction = msg;
-    }
-    else if (snakePlayers[socket.handshake.session.username].direction === 'up' && msg !== 'down') {
-        snakePlayers[socket.handshake.session.username].direction = msg;
-    }
-    else if (snakePlayers[socket.handshake.session.username].direction === 'right' && msg !== 'left') {
-        snakePlayers[socket.handshake.session.username].direction = msg;
-    }
-    else if (snakePlayers[socket.handshake.session.username].direction === 'down' && msg !== 'up') {
-        snakePlayers[socket.handshake.session.username].direction = msg;
-    }
-    else if (!snakePlayers[socket.handshake.session.username].direction)
-        snakePlayers[socket.handshake.session.username].direction = msg;
-}
-
-function command(username, param, io, socket) {
-    if (param[0] === '/kick' && clients[username].record.admin) {
-        if (param[1] in clients) {
-            clients[param[1]].record.save();
-            io.emit('player_removal', param[1]);
-            io.to(clients[param[1]].socketID).emit('kicked', '');
-            delete clients[param[1]];
-            player_position_request(io);
-        }
-    }
-    else if (param[0] === '/op' && clients[username].record.admin) {
-        if (param[1] in clients)
-            clients[param[1]].record.admin = true;
-        else {
-            user.findOne({where : {
-                username : param[1]
-            }}).then(function(player) {
-                if (user) {
-                    player.admin = true;
-                    player.save();
-                }
+            socket.emit('newMessage', {
+                username: bySocket[socket.id].name,
+                message: msg
+            });
+            socket.broadcast.emit('newMessage', {
+                username: bySocket[socket.id].name,
+                message: msg
             });
         }
-    }
-    else if (param[0] === '/deop' && clients[username].record.admin) {
-        if (param[1] in clients)
-            clients[param[1]].record.admin = false;
-        else {
-            user.findOne({where : {
-                username : param[1]
-            }}).then(function(player) {
-                if (user) {
-                    player.admin = false;
-                    player.save();
-                }
-            });
-        }
-    }
-    else if (param[0] === '/ban' && clients[username].record.admin) {
-        if (param.length !== 1) {
-            banned.findOne({where : {username : param[1]}})
-            .then(function(bannedName) {
-                if (!bannedName) {
-                    banned.create({username : param[1]})
-                    .then(function(banned) {
-                        banned.save();
-                    });
-                }
-            })
-            user.findOne({where : {username : param[1]}})
-            .then(function(player) {
-                if (user) {
-                    player.banned = true;
-                    player.save();
-                    if (player.username in clients) {
-                        io.emit('player_removal', param[1]);
-                        io.to(clients[param[1]].socketID).emit('kicked', '');
-                        delete clients[param[1]];
-                        player_position_request(io);
-                    }
-                }
-            });
-        }
+}
 
-    }
-    else if (param[0] === '/unban' && clients[username].record.admin) {
-        banned.findOne({where : {username : param[1]}})
-        .then(function(banned) {
-            if (banned) {
-                banned.destroy();
-            }
+function sendPM(socket, msg) {
+    if (socket.id in bySocket)
+        friend.findOne({where: {
+            username: bySocket[socket.id].name,
+            friend: msg.destination
+        }}).then(function(relationship) {
+            if (relationship)
+                friend.findOne({where: {
+                    username: relationship.friend,
+                    friend: relationship.username
+                }}).then(function(mutual) {
+                    if (mutual) {
+                        socket.broadcast.to(byName[msg.destination].socketID).emit('newPM',{
+                            source: mutual.friend,
+                            destination: mutual.username,
+                            message: msg.message,
+                            reciever: true
+                        });
+                        socket.emit('newPM', {
+                            source: mutual.friend,
+                            destination: mutual.username,
+                            message: msg.message,
+                            reciever: false
+                        });
+                    }
+                });
         });
-        user.findOne({where : {username : param[1]}})
-        .then(function(player) {
-            if (user) {
-                player.banned = false;
-                player.save();
+}
+
+function directionUpdate(socket, msg) {
+    if (socket.id in bySocket)
+        clients[bySocket[socket.id].zone][bySocket[socket.id].name].direction = msg;
+}
+
+function positionUpdate(io) {
+    for (var zone in clients) {
+        for (var key in clients[zone]) {
+            if (clients[zone][key].direction === 'left') {
+                clients[zone][key].record.posX -= 1;
+                if (clients[zone][key].record.posX < 0)
+                    zoneChange(io, zone, key);
             }
-        });
-    }
-    else if (param[0] === '/help') {
-        var message = {
-            username : 'help',
-            message : "/snake   : initiate snake game"
-        };
-        socket.emit('message_post', message);
-    }
-    else if (param[0] === '/snake')
-        snake_game_initiate(socket);
-    else if (param[0] === '/rps') {
-        if (param[1] in clients && param[1] !== username) {
-            if (rpsChallenge[param[1]] === username) {
-                rpsChallenge[username] = param[1];
-                socket.emit('rps_initiate', '');
-                socket.broadcast.to(clients[param[1]].socketID).emit('rps_initiate', '');
+            else if (clients[zone][key].direction === 'right') {
+                clients[zone][key].record.posX += 1;
+                if (clients[zone][key].record.posX > 700)
+                    zoneChange(io, zone, key);
             }
-            else {
-                rps_game_init(socket, param[1]);
+            else if (clients[zone][key].direction === 'up') {
+                clients[zone][key].record.posY -= 1;
+                if (clients[zone][key].record.posY < 0)
+                    zoneChange(io, zone, key);
+            }
+            else if (clients[zone][key].direction === 'down') {
+                clients[zone][key].record.posY += 1;
+                if (clients[zone][key].record.posY > 460)
+                    zoneChange(io, zone, key);
+            }
+            else if (clients[zone][key].direction === 'up-left') {
+                clients[zone][key].record.posX -= 1;
+                clients[zone][key].record.posY -= 1;
+                if (clients[zone][key].record.posX < 0 || clients[zone][key].record.posY < 0)
+                    zoneChange(io, zone, key);
+            }
+            else if (clients[zone][key].direction === 'up-right') {
+                clients[zone][key].record.posX += 1;
+                clients[zone][key].record.posY -= 1;
+                if (clients[zone][key].record.posX > 700 || clients[zone][key].record.posY < 0)
+                    zoneChange(io, zone, key);
+            }
+            else if (clients[zone][key].direction === 'down-left') {
+                clients[zone][key].record.posX -= 1;
+                clients[zone][key].record.posY += 1;
+                if (clients[zone][key].record.posX < 0 || clients[zone][key].record.posY > 460)
+                    zoneChange(io, zone, key);
+            }
+            else if (clients[zone][key].direction === 'down-right') {
+                clients[zone][key].record.posX += 1;
+                clients[zone][key].record.posY += 1;
+                if (clients[zone][key].record.posX > 700 || clients[zone][key].record.posY > 460)
+                    zoneChange(io, zone, key);
             }
         }
+        zoneUpdate(io, zone);
     }
-    else if (param[0] === '/friend') {
-        if (username !== param[1]) {
-            user.findOne({ where : {
-                username : param[1]
-            }}).then(function(player) {
-                if (player) {
-                    friend.findOne({where : {
-                        username : username,
-                        friend   : param[1]
-                    }}).then(function(relation){
+}
+
+function currentZone(socket) {
+    socket.emit('currentZone', bySocket[socket.id].zone);
+}
+
+function zoneChange(io, zone, name) {
+    if (clients[zone][name].record.posX < 0) {
+        if (clients[zone][name].record.posY < 0) {
+            var newZone = clients[zone][name].record.sectionX - 1 + '_' + (clients[zone][name].record.sectionY - 1);
+            if (!(newZone in clients)) {
+                clients[newZone] = {};
+            }
+            clients[zone][name].record.sectionX -= 1;
+            clients[zone][name].record.sectionY -= 1;
+            clients[zone][name].record.posX = 700;
+            clients[zone][name].record.posY = 460;
+
+            bySocket[byName[name].socketID].zone = newZone;
+            byName[name].zone = newZone;
+
+            clients[newZone][name] = objectAssign(clients[zone][name]);
+            io.to(byName[name].socketID).emit('currentZone', newZone);
+            delete clients[zone][name];
+        }
+        else if (clients[zone][name].record.posY > 460) {
+            var newZone = clients[zone][name].record.sectionX - 1 + '_' + (clients[zone][name].record.sectionY + 1);
+            if (!(newZone in clients)) {
+                clients[newZone] = {};
+            }
+            clients[zone][name].record.sectionX -= 1;
+            clients[zone][name].record.sectionY += 1;
+            clients[zone][name].record.posX = 700;
+            clients[zone][name].record.posY = 0;
+            clients[newZone][name] = objectAssign(clients[zone][name]);
+            io.to(byName[name].socketID).emit('currentZone', newZone);
+            bySocket[byName[name].socketID].zone = newZone;
+            byName[name].zone = newZone;
+            delete clients[zone][name];
+        }
+        else {
+            var newZone = clients[zone][name].record.sectionX - 1 + '_' + clients[zone][name].record.sectionY;
+            if (!(newZone in clients)) {
+                clients[newZone] = {};
+            }
+            clients[zone][name].record.sectionX -= 1;
+            clients[zone][name].record.posX = 700;
+            clients[newZone][name] = objectAssign(clients[zone][name]);
+            io.to(byName[name].socketID).emit('currentZone', newZone);
+            bySocket[byName[name].socketID].zone = newZone;
+            byName[name].zone = newZone;
+            delete clients[zone][name];
+        }
+    }
+    else if (clients[zone][name].record.posX > 700) {
+        if (clients[zone][name].record.posY < 0) {
+            var newZone = clients[zone][name].record.sectionX + 1 + '_' + (clients[zone][name].record.sectionY - 1);
+            if (!(newZone in clients)) {
+                clients[newZone] = {};
+            }
+            clients[zone][name].record.sectionX += 1;
+            clients[zone][name].record.sectionY -= 1;
+            clients[zone][name].record.posX = 0;
+            clients[zone][name].record.posY = 460;
+            clients[newZone][name] = objectAssign(clients[zone][name]);
+            io.to(byName[name].socketID).emit('currentZone', newZone);
+            bySocket[byName[name].socketID].zone = newZone;
+            byName[name].zone = newZone;
+            delete clients[zone][name];
+        }
+        else if (clients[zone][name].record.posY > 460) {
+            var newZone = clients[zone][name].record.sectionX + 1 + '_' + (clients[zone][name].record.sectionY + 1);
+             if (!(newZone in clients)) {
+                clients[newZone] = {};
+            }
+            clients[zone][name].record.sectionX += 1;
+            clients[zone][name].record.sectionY += 1;
+            clients[zone][name].record.posX = 700;
+            clients[zone][name].record.posY = 0;
+            clients[newZone][name] = objectAssign(clients[zone][name]);
+            io.to(byName[name].socketID).emit('currentZone', newZone);
+            bySocket[byName[name].socketID].zone = newZone;
+            byName[name].zone = newZone;
+            delete clients[zone][name];
+        }
+        else {
+            var newZone = clients[zone][name].record.sectionX + 1 + '_' + clients[zone][name].record.sectionY;
+            if (!(newZone in clients)) {
+                clients[newZone] = {};
+            }
+            clients[zone][name].record.sectionX += 1;
+            clients[zone][name].record.posX = 0;
+            clients[newZone][name] = objectAssign(clients[zone][name]);
+            io.to(byName[name].socketID).emit('currentZone', newZone);
+            bySocket[byName[name].socketID].zone = newZone;
+            byName[name].zone = newZone;
+            delete clients[zone][name];
+        }
+    }
+    else if (clients[zone][name].record.posY < 0) {
+        var newZone = clients[zone][name].record.sectionX + '_' + (clients[zone][name].record.sectionY - 1);
+        if (!(newZone in clients)) {
+            clients[newZone] = {};
+        }
+        clients[zone][name].record.sectionY -= 1;
+        clients[zone][name].record.posY = 460;
+        clients[newZone][name] = objectAssign(clients[zone][name]);
+        io.to(byName[name].socketID).emit('currentZone', newZone);
+        bySocket[byName[name].socketID].zone = newZone;
+        byName[name].zone = newZone;
+        delete clients[zone][name];
+    }
+    else if (clients[zone][name].record.posY > 460) {
+        var newZone = clients[zone][name].record.sectionX + '_' + (clients[zone][name].record.sectionY + 1);
+        if (!(newZone in clients)) {
+           clients[newZone] = {};
+        }
+        clients[zone][name].record.sectionY += 1;
+        clients[zone][name].record.posY = 0;
+        clients[newZone][name] = objectAssign(clients[zone][name]);
+        io.to(byName[name].socketID).emit('currentZone', newZone);
+        bySocket[byName[name].socketID].zone = newZone;
+        byName[name].zone = newZone;
+        delete clients[zone][name];
+    }
+}
+
+function commandAttempt(username, param, socket) {
+    if (param[0] === '/friend') {
+        if (username !== param[1])
+            user.findOne({where: {username: param[1]}}).then(function(player) {
+                if (player)
+                    friend.findOne({where: {
+                        username: username,
+                        friend: param[1]
+                    }}).then(function(relation) {
                         if (!relation)
                             friend.create({
-                                username : username,
-                                friend : param[1]
+                                username: username,
+                                friend: param[1]
                             }).then(function(friendship) {
-                                friend.findOne({where : {
-                                    username : friendship.friend,
-                                    friend   : friendship.username
-                                }}).then(function(friends) {
-                                    if(friends) {
-                                        socket.emit('friend_addition', friends.username);
-                                        socket.broadcast.to(clients[friends.username].socketID).emit('friend_addition', friends.friend);
+                                friend.findOne({where: {
+                                    username: friendship.friend,
+                                    friend: friendship.username
+                                }}).then(function(mutual) {
+                                    if (mutual) {
+                                        socket.broadcast.to(byName[mutual.username].socketID).emit('friendAddition', mutual.friend);
+                                        socket.emit('friendAddition', friend.username);
                                     }
-                                })
-                            })
+                                });
+                            });
                     });
-                }
             });
-        }
-    }
-    else if (param[0] === '/rawrrawrrawr') {
-        clients[username].record.admin = true;
     }
 }
 
-function saveClients() {
-    for (var key in clients)
-        clients[key].record.save();
+function serverCommand(param) {
+    if(param[0] === '/admin') {
+        if (param[1] in byName) {
+            if (clients[byName[param[1]].zone][param[1]].record.admin == false) {
+                clients[byName[param[1]].zone][param[1]].record.admin = true;
+                console.log(param[1] + ' has been made an administrator');
+            }
+            else
+                console.log(param[1] + ' is already an administrator');
+        }
+        else {
+            user.findOne({where: {username: param[1]}}).then(function(player) {
+                if (player) {
+                    if (player.admin == false) {
+                        player.admin = true;
+                        player.save();
+                        console.log(player.username + ' has been made an administrator');
+                    }
+                    else
+                        console.log(player.username + ' is already an administrator');
+                }
+                else
+                    console.log(param[1] + ' does not exist');
+            });
+        }
+    }
+    if(param[0] === '/clear')
+        process.stdout.write('\033c');
 }
 
 module.exports = {
-    login_request : login_request,
-    register_request : register_request,
-    open_name_request : open_name_request,
-    direction_update : direction_update,
-    client_removal : client_removal,
-    player_position_request : player_position_request,
-    message_post : message_post,
-    private_message_post : private_message_post,
-    player_list_request : player_list_request,
-    positionUpdate : positionUpdate,
-    rps_update : rps_update,
-    snake_direction_update : snake_direction_update,
-    saveClients : saveClients
-}
+    loginRequest: loginRequest,
+    registerRequest: registerRequest,
+    openNameRequest: openNameRequest,
+    playerListRequest: playerListRequest,
+    newClient: newClient,
+    clientRemoval: clientRemoval,
+    zoneRequest: zoneRequest,
+    directionUpdate: directionUpdate,
+    positionUpdate: positionUpdate,
+    currentZone: currentZone,
+    messagePost: messagePost,
+    sendPM: sendPM,
+    serverCommand: serverCommand
+};
