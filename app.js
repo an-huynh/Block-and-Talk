@@ -2,20 +2,11 @@ var express = require('express');
 var app = require('express')();
 var http = require('http').Server(app);
 var io = require('socket.io')(http);
-var session = require('express-session')({
-    secret: 'my-secret',
-    resave: true,
-    saveUninitialized: true
-});
-var sharedSession = require('express-socket.io-session');
 var controller = require(__dirname + '/src/controller.js');
 
 process.stdout.write('\033c');
 
 app.use(express.static('static'));
-app.use(session);
-
-io.use(sharedSession(session));
 
 app.get('/', function(req, res) {
     res.sendFile(__dirname + '/html/index.html');
