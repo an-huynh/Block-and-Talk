@@ -16,7 +16,10 @@ var socketFunctions = {
     currentZone: function() {},
     newMessage: function() {},
     newPM: function() {},
-    stopGame: function() {}
+    stopGame: function() {},
+    startSnake: function() {},
+    snakeUpdate: function() {},
+    stopSnake: function() {}
 };
 var direction = {
     left  : false,
@@ -70,6 +73,18 @@ function startGame() {
 function stopGame() {
     window.onkeydown = null;
     window.onkeyup = null;
+}
+
+function startSnake(scoreList) {
+    stopGame();
+    pauseChatBox();
+    window.onkeydown = snakeHandler;
+    snakeScoreDraw(scoreList);
+}
+
+function stopSnake() {
+    startGame();
+    unpauseChatBox();
 }
 
 function startChatBox() {
@@ -492,6 +507,54 @@ function creationMenuDraw() {
     ctx.fillText(elt('register-username').value, 20, 440);
 }
 
+function snakeDraw(msg) {
+    ctx.clearRect(0, 0, canvas.height, canvas.height);
+    ctx.beginPath();
+    ctx.rect(20, 20, canvas.height - 40, canvas.height - 40);
+    ctx.fillStyle = 'white';
+    ctx.fill();
+    ctx.closePath();
+    for (var i = 0; i < msg.snake.length; i++) {
+        ctx.beginPath();
+        ctx.rect(msg.snake[i].posX * 20, msg.snake[i].posY * 20, 20, 20);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.beginPath();
+    ctx.rect(msg.snack.posX * 20, msg.snack.posY * 20, 20, 20);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.closePath();
+    
+    ctx.clearRect(canvas.height, canvas.height - 50, canvas.width - canvas.height - 20, 30);
+    ctx.beginPath();
+    ctx.rect(canvas.height, canvas.height - 50, canvas.width - canvas.height - 20, 30);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.closePath();
+    
+    ctx.font = '20px Helvetica';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'black';
+    ctx.fillText("Score: " + (msg.snake.length - 1), canvas.height + 4, canvas.height - 30);
+}
+
+function snakeScoreDraw(scores) {
+    ctx.beginPath();
+    ctx.rect(canvas.height, 20, canvas.width - canvas.height - 20, canvas.height - 50);
+    ctx.fillStyle = 'blue';
+    ctx.fill();
+    ctx.closePath();
+    
+    for (var i = 0; i < scores.length; i++) {
+        ctx.font = '20px Helvetica';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = 'black';
+        ctx.fillText(scores[i].score + ' ' + scores[i].username, canvas.height + 20, 50 + (22 * i));
+    }
+}
+
 function typingMessage() {
     window.onkeydown = function(){};
 }
@@ -636,6 +699,24 @@ function chatBoxHandler() {
     }
 }
 
+function snakeHandler(evt) {
+    var direction = null;
+    if (evt.keyCode == 38 || evt.keyCode == 87) {
+        direction = 'up';
+    }
+    else if (evt.keyCode == 37 || evt.keyCode == 65) {
+        direction = 'left';
+    }
+    else if (evt.keyCode == 39 || evt.keyCode == 68) {
+        direction = 'right';
+    }
+    else if (evt.keyCode == 40 || evt.keyCode == 83) {
+        direction = 'down';
+    }
+    if (direction !== null)
+        socket.emit('snakeUpdate', direction);
+}
+
 // INIT SOCKET
 function initSockets() {
     socket = io();
@@ -652,13 +733,16 @@ function initSockets() {
     socket.on('newMessage', function(msg) {socketFunctions.newMessage(msg);});
     socket.on('newPM', function(msg) {socketFunctions.newPM(msg);});
     socket.on('stopGame', function(msg) {socketFunctions.stopGame();});
+    socket.on('startSnake', function(msg) {socketFunctions.startSnake(msg);});
+    socket.on('snakeUpdate', function(msg) {socketFunctions.snakeUpdate(msg);});
+    socket.on('stopSnake', function(msg) {socketFunctions.stopSnake();});
     socket.on('disconnect', function(msg) {alert('lost connection to server');});
 }
 
 // INIT LOGIN SOCKET FUNCTIONS
 function startLoginFunctions() {
     socketFunctions.loginResponse = function(msg) {
-        if (msg) {
+        if (msg === true) {
             stopMenu();
             stopLoginFunctions();
             stopCreationMenu();
@@ -667,7 +751,7 @@ function startLoginFunctions() {
             startChatBox();
         }
         else
-            alert('error');
+            alert(msg);
     };
     socketFunctions.registerResponse = function(msg) {
         if (msg) {
@@ -767,8 +851,14 @@ function startGameFunctions() {
         stopGameFunctions();
         stopGame();
         stopChatBox();
+        stopSnakeFunctions();
         startLoginFunctions();
         startMenu();
+    }
+    socketFunctions.startSnake = function(msg) {
+        pauseGameFunctions();
+        startSnakeFunctions();
+        startSnake(msg);
     }
 }
 
@@ -778,10 +868,54 @@ function stopGameFunctions() {
     socketFunctions.zoneAddition = function(msg) {};
     socketFunctions.friendAddition = function(msg) {};
     socketFunctions.playerRemoval = function(msg) {}
-    socketFunctions.zoneAddition = function(msg) {};
     socketFunctions.zoneUpdate = function(msg) {};
     socketFunctions.currentZone = function(msg) {};
     socketFunctions.newMessage = function(msg) {};
     socketFunctions.newPM = function(msg) {};
     socketFunctions.stopGame = function() {};
+}
+
+function pauseGameFunctions() {
+    socketFunctions.playerListResponse = function(msg) {};
+    socketFunctions.zoneAddition = function(msg) {};
+    socketFunctions.startSnake = function(msg) {};
+    socketFunctions.zoneUpdate = function(msg) {};
+}
+
+function startSnakeFunctions() {
+    pauseGameFunctions();
+    socketFunctions.snakeUpdate = function(msg) {
+        snakeDraw(msg);
+    }
+    socketFunctions.stopSnake = function() {
+        stopSnake();
+        stopSnakeFunctions();
+        unpauseGameFunctions();
+        startGame()
+    }
+}
+
+function stopSnakeFunctions() {
+    socketFunctions.snakeUpdate = function() {};
+    socketFunctions.stopSnake = function() {};
+}
+
+function unpauseGameFunctions() {
+    socketFunctions.playerListResponse = function(msg) {
+        for (var i = 0; i < msg.length; i++)
+            playerListAdd(msg[i]);
+    };
+    socketFunctions.zoneAddition = function(msg) {
+        players[msg.username] = msg;
+        drawGame();
+    };
+    socketFunctions.zoneUpdate = function(msg) {
+        players = msg;
+        drawGame();
+    }
+    socketFunctions.startSnake = function(msg) {
+        pauseGameFunctions();
+        startSnakeFunctions();
+        startSnake(msg);
+    }
 }

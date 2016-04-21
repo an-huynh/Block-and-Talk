@@ -40,6 +40,9 @@ io.on('connection', function(socket) {
     socket.on('pmPost', function(msg) {
         controller.sendPM(socket, msg);
     });
+    socket.on('snakeUpdate', function(msg) {
+        controller.updateSnake(socket, msg);
+    })
     socket.on('disconnect', function(msg) {
         controller.clientRemovalIO(io, socket.id);
     });

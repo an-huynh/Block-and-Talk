@@ -1,8 +1,8 @@
 var database = require(__dirname + '/models/database.js');
 var user = require(__dirname + '/models/user.js');
-var snakeScore = require(__dirname + '/models/snakescore.js');
 var friend = require(__dirname + '/models/friend.js');
 var banned = require(__dirname + '/models/ban.js');
+var snakeGame = require(__dirname + '/minigames/snake.js');
 var objectAssign = require('object-assign');
 
 database.sync();
@@ -19,7 +19,7 @@ function loginRequest(socket, msg) {
         username: msg.username,
         password: msg.password
     }}).then(function(player) {
-        if (player && !(player.username in byName)) {
+        if (player && !(player.username in byName) && !player.banned) {
             var zone = player.sectionX + '_' + player.sectionY;
             bySocket[socket.id] = {
                 zone: zone,
@@ -37,8 +37,12 @@ function loginRequest(socket, msg) {
             socket.emit('loginResponse', true);
             console.log(player.username + ' has logged in.');
         }
+        else if (player.username in byName)
+            socket.emit('loginResponse', 'User already logged in');
+        else if (player.banned)
+            socket.emit('loginResponse', 'User is banned');
         else
-            socket.emit('loginResponse', false);
+            socket.emit('ERROR');
     });
 }
 
@@ -146,6 +150,7 @@ function friendAddition(socket) {
 function clientRemovalIO(io, socketID) {
     if (socketID in bySocket) {
         io.emit('playerRemoval', bySocket[socketID].name);
+        snakeGame.stopSnakeGame(bySocket[socketID].name, io, socketID);
         delete clients[bySocket[socketID].zone][bySocket[socketID].name];
         delete byName[bySocket[socketID].name];
         delete bySocket[socketID];
@@ -156,6 +161,7 @@ function clientRemovalSocket(socket, socketID) {
     if (socketID in bySocket) {
         socket.broadcast.emit('playerRemoval', bySocket[socketID].name);
         socket.emit('playerRemoval', bySocket[socketID].name);
+        snakeGame.stopSnakeGame(bySocket[socketID].name, socket, socketID);
         delete clients[bySocket[socketID].zone][bySocket[socketID].name];
         delete byName[bySocket[socketID].name];
         delete bySocket[socketID];
@@ -284,7 +290,9 @@ function positionUpdate(io) {
 }
 
 function currentZone(socket) {
-    socket.emit('currentZone', bySocket[socket.id].zone);
+    if (socket.id in bySocket) {
+        socket.emit('currentZone', bySocket[socket.id].zone);
+    }
 }
 
 function zoneChange(io, zone, name) {
@@ -409,7 +417,7 @@ function zoneChange(io, zone, name) {
 }
 
 function commandAttempt(username, param, socket) {
-    if (param[0] === '/friend') {
+    if (param[0] === '/friend' && param.length === 2) {
         if (username !== param[1])
             user.findOne({where: {username: param[1]}}).then(function(player) {
                 if (player)
@@ -435,7 +443,7 @@ function commandAttempt(username, param, socket) {
                     });
             });
     }
-    if (param[0] === '/kick' && clients[byName[username].zone][username].record.admin) {
+    if (param[0] === '/kick' && clients[byName[username].zone][username].record.admin && param.length === 2) {
         if (param[1] in byName && param[1] !== username) {
             clients[byName[param[1]].zone][param[1]].record.save();
             socket.to(byName[param[1]].socketID).emit('stopGame', '');
@@ -443,14 +451,96 @@ function commandAttempt(username, param, socket) {
             console.log(param[1] + ' has been kicked by ' + username);
         }
     }
+    if (param[0] === '/op' && clients[byName[username].zone][username].record.admin && param.length === 2) {
+        if (param[1] in byName) {
+            if (clients[byName[param[1]].zone][param[1]].record.admin === false) {
+                clients[byName[param[1]].zone][param[1]].record.admin = true;
+                socket.broadcast.to(byName[param[1]].socketID).emit('newMessage', {
+                    username: 'Server',
+                    message: 'You have been made an administrator'
+                });
+                console.log(param[1] + ' has been made an administrator by ' + username);
+            }
+        }
+        else
+            user.findOne({where: {username: param[1]}}).then(function(player) {
+                if (player) {
+                    if (player.admin === false) {
+                        player.admin = true;
+                        player.save();
+                        console.log(param[1] + ' has been made an administrator by ' + username);
+                    }
+                }
+            });
+    }
+    if (param[0] === '/deop' && clients[byName[username].zone][username].record.admin && param.length === 2) {
+        if (param[1] in byName) {
+            if (clients[byName[param[1]].zone][param[1]].record.admin === true){
+                clients[byName[param[1]].zone][param[1]].record.admin = true;
+                socket.broadcast.to(byName[param[1]].socketID).emit('newMessage', {
+                    username: 'Server',
+                    message: 'You are no longer an administrator'
+                });
+                console.log(param[1] + ' has had administrative powers revoked by ' + username);
+            }
+        }
+        else
+            user.findOne({where: {username: param[1]}}).then(function(player) {
+                if (player) {
+                    if (player.admin === true) {
+                        player.admin = false;
+                        player.save();
+                        console.log(param[1] + ' has had administrative powers revoked by ' + username);
+                    }
+                }
+            });
+    }
+    if (param[0] === '/ban' && clients[byName[username].zone][username].record.admin && param.length === 2) {
+        banned.findOne({where: {username: param[1]}}).then(function(bannedName) {
+            if (!bannedName) {
+                banned.create({username: param[1]});
+                if (param[1] in byName) {
+                    clients[byName[param[1]].zone][param[1]].record.banned = true;
+                    clients[byName[param[1]].zone][param[1]].record.save();
+                    socket.to(byName[param[1]].socketID).emit('stopGame', '');
+                    clientRemovalSocket(socket, byName[param[1]].socketID);
+                }
+                else
+                    user.findOne({where: {username: param[1]}}).then(function(player) {
+                        if (player) {
+                            player.banned = true;
+                            player.save();
+                        }
+                    });
+                console.log(param[1] + ' has been banned by ' + username);
+            }
+        });
+    }
+    if (param[0] === '/unban' && param.length === 2 && clients[byName[username].zone][username].record.admin) {
+        banned.findOne({where: {username: param[1]}}).then(function(bannedName) {
+            if (bannedName) {
+                bannedName.destroy();
+                user.findOne({where: {username: param[1]}}).then(function(bannedPlayer) {
+                    if (bannedPlayer) {
+                        bannedPlayer.banned = false;
+                        bannedPlayer.save();
+                    }
+                });
+                console.log(param[1] + ' has been unbanned by ' + username);
+            }
+        });
+    }
+    if (param[0] === '/snake' && param.length === 1) {
+        snakeGame.startSnakeGame(username, socket);
+    }
 }
 
 function serverCommand(io, param) {
-    if(param[0] === '/admin') {
+    if(param[0] === '/op' && param.length === 2) {
         if (param[1] in byName) {
-            if (clients[byName[param[1]].zone][param[1]].record.admin == false) {
+            if (clients[byName[param[1]].zone][param[1]].record.admin === false) {
                 clients[byName[param[1]].zone][param[1]].record.admin = true;
-                console.log(param[1] + ' has been made an administrator');
+                console.log(param[1] + ' has been granted administrative powers');
             }
             else
                 console.log(param[1] + ' is already an administrator');
@@ -461,7 +551,7 @@ function serverCommand(io, param) {
                     if (player.admin == false) {
                         player.admin = true;
                         player.save();
-                        console.log(player.username + ' has been made an administrator');
+                        console.log(player.username + ' has been granted administrative powers');
                     }
                     else
                         console.log(player.username + ' is already an administrator');
@@ -471,9 +561,27 @@ function serverCommand(io, param) {
             });
         }
     }
+    if (param[0] === '/deop' && param.length === 2) {
+        if (param[1] in byName) {
+            if (clients[byName[param[1]].zone][param[1]].record.admin === true) {
+                clients[byName[param[1]].zone][param[1]].record.admin = false;
+                console.log(param[1] + ' has had administrative powers revoked');
+            }
+        }
+        else
+            user.findOne({where: {username: param[1]}}).then(function(player) {
+                if (player) {
+                    if (player.admin === true) {
+                        player.admin = false;
+                        player.save();
+                        console.log(param[1] + ' has had administrative powers revoked');
+                    }
+                }
+            });
+    }
     if(param[0] === '/clear')
         process.stdout.write('\033c');
-    if (param[0] === '/kick') {
+    if (param[0] === '/kick' && param.length === 2) {
         if (param[1] in byName) {
             clients[byName[param[1]].zone][param[1]].record.save();
             io.to(byName[param[1]].socketID).emit('stopGame', '');
@@ -481,15 +589,58 @@ function serverCommand(io, param) {
             console.log(param[1] + ' has been kicked');
         }
     }
+    if (param[0] === '/ban' && param.length === 2) {
+        banned.findOne({where: {username: param[1]}}).then(function(bannedName) {
+            if (!bannedName) {
+                banned.create({username: param[1]});
+                if (param[1] in byName) {
+                    clients[byName[param[1]].zone][param[1]].record.banned = true;
+                    clients[byName[param[1]].zone][param[1]].record.save();
+                    io.to(byName[param[1]].socketID).emit('stopGame', '');
+                    clientRemovalIO(io, byName[param[1]].socketID);
+                }
+                else
+                    user.findOne({where: {username: param[1]}}).then(function(player) {
+                        if (player) {
+                            console.log('eyy');
+                            player.banned = true;
+                            player.save();
+                        }
+                    });
+                console.log(param[1] + ' has been banned');
+            }
+        });
+    }
+    if (param[0] === '/unban' && param.length === 2) {
+        banned.findOne({where: {username: param[1]}}).then(function(banned) {
+            if (banned) {
+                banned.destroy();
+                user.findOne({where: {username: param[1]}}).then(function(bannedPlayer) {
+                    if (bannedPlayer) {
+                        bannedPlayer.banned = false;
+                        bannedPlayer.save();
+                    }
+                });
+                console.log(param[1] + ' has been unbanned');
+            }
+        });
+    }
     if (param[0] === '/help') {
         process.stdout.write('\033c');
         console.log(
             '/kick {username}    - kick a player\n' +
-            '/admin {username}   - promote someone to be an administrator\n' +
+            '/op {username}      - grant someone administrative power\n' +
+            '/deop {username}    - revoke someones administrative power\n' +
+            '/ban {username}     - ban a player or username\n' +
+            '/unban {username}   - unban a player or username\n' +
             '/clear              - clear console\n' +
-            '/exit               - stop server'
+            '/exit               - stop server\n'
         );
     }
+}
+
+function updateSnake(socket, msg) {
+    snakeGame.snakeUpdate(bySocket[socket.id].name, msg, socket);
 }
 
 module.exports = {
@@ -505,5 +656,6 @@ module.exports = {
     currentZone: currentZone,
     messagePost: messagePost,
     sendPM: sendPM,
-    serverCommand: serverCommand
+    serverCommand: serverCommand,
+    updateSnake: updateSnake,
 };
