@@ -13,7 +13,6 @@ app.get('/', function(req, res) {
 });
 
 io.on('connection', function(socket) {
-    console.log('a user has connected');
     socket.on('loginRequest', function(msg) {
         controller.loginRequest(socket, msg);
     });
@@ -42,7 +41,7 @@ io.on('connection', function(socket) {
         controller.sendPM(socket, msg);
     });
     socket.on('disconnect', function(msg) {
-        controller.clientRemoval(socket);
+        controller.clientRemovalIO(io, socket.id);
     });
 });
 
@@ -58,10 +57,11 @@ process.stdin.setEncoding('utf-8');
 process.stdin.on('data', function(msg) {
     if (msg.trim() === '/exit') {
         console.log('Stopping Server...');
+        console.log('Goodbye :D');
         process.exit();
     }
     else
-        controller.serverCommand(msg.trim().split(' '));
+        controller.serverCommand(io, msg.trim().split(' '));
 });
 
 process.on('SIGINT', function() {

@@ -114,11 +114,21 @@ function unpauseChatBox() {
 }
 
 function stopChatBox() {
+    elt('chat-box-dropdown').style.display = 'none';
+    elt('chat-box').style.display = 'none';
+    elt('message-form').style.display = 'none';
+    elt('playerlist-box').style.display = 'none';
+
+    var dropDown = elt('chat-box-dropdown');
+    while (dropDown.lastChild) {
+        dropDown.removeChild(dropDown.lastChild);
+    }
+
     var chatBox = elt('chat-box');
     while (chatBox.lastChild) {
         chatBox.removeChild(chatBox.lastChild);
     }
-    var playerList = elt('chat-players');
+    var playerList = elt('global-chat-players');
     while (playerList.lastChild) {
         playerList.removeChild(playerList.lastChild);
     }
@@ -706,7 +716,7 @@ function startGameFunctions() {
             elt('global-chat-players').removeChild(elt('playerlist-' + msg));
         if (elt('chat-messages-player-' + msg)) {
             elt('chat-box').removeChild(elt('chat-messages-player-' + msg));
-            if (elt('chat-box-dropdown').value === msg) {
+            if (elt('chat-box-dropdown').value.substr(1) === msg) {
                 elt('global-chat-messages').style.display = 'block';
                 elt('message-form').onsubmit = sendMessage;
             }
@@ -738,7 +748,6 @@ function startGameFunctions() {
         drawGame();
     }
     socketFunctions.newPM = function(msg) {
-        console.log(msg);
         var newMessage = elt('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg.source;
         newMessage.querySelector('.message-content').textContent = msg.message;
@@ -755,6 +764,7 @@ function startGameFunctions() {
         drawGame();
     }
     socketFunctions.stopGame = function() {
+        stopGameFunctions();
         stopGame();
         stopChatBox();
         startLoginFunctions();

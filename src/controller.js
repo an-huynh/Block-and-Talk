@@ -35,6 +35,7 @@ function loginRequest(socket, msg) {
             };
             newClient(socket);
             socket.emit('loginResponse', true);
+            console.log(player.username + ' has logged in.');
         }
         else
             socket.emit('loginResponse', false);
@@ -75,6 +76,7 @@ function registerRequest(socket, msg) {
                             };
                             newClient(socket);
                             socket.emit('registerResponse', true);
+                            console.log(newPlayer.username + ' has registered and logged in.');
                         });
                     else
                         socket.emit('registerResponse', false);
@@ -141,15 +143,26 @@ function friendAddition(socket) {
     });
 }
 
-function clientRemoval(socket) {
-    if (socket.id in bySocket) {
-        socket.broadcast.emit('playerRemoval', bySocket[socket.id].name);
-        delete clients[bySocket[socket.id].zone][bySocket[socket.id].name];
-        var id = socket.id;
-        delete byName[bySocket[socket.id].name];
-        delete bySocket[id];
+function clientRemovalIO(io, socketID) {
+    if (socketID in bySocket) {
+        io.emit('playerRemoval', bySocket[socketID].name);
+        delete clients[bySocket[socketID].zone][bySocket[socketID].name];
+        delete byName[bySocket[socketID].name];
+        delete bySocket[socketID];
     }
 }
+
+function clientRemovalSocket(socket, socketID) {
+    if (socketID in bySocket) {
+        socket.broadcast.emit('playerRemoval', bySocket[socketID].name);
+        socket.emit('playerRemoval', bySocket[socketID].name);
+        delete clients[bySocket[socketID].zone][bySocket[socketID].name];
+        delete byName[bySocket[socketID].name];
+        delete bySocket[socketID];
+    }
+}
+
+
 
 function zoneRequest(socket) {
     if (socket.id in bySocket) {
@@ -422,9 +435,17 @@ function commandAttempt(username, param, socket) {
                     });
             });
     }
+    if (param[0] === '/kick' && clients[byName[username].zone][username].record.admin) {
+        if (param[1] in byName && param[1] !== username) {
+            clients[byName[param[1]].zone][param[1]].record.save();
+            socket.to(byName[param[1]].socketID).emit('stopGame', '');
+            clientRemovalSocket(socket, byName[param[1]].socketID);
+            console.log(param[1] + ' has been kicked by ' + username);
+        }
+    }
 }
 
-function serverCommand(param) {
+function serverCommand(io, param) {
     if(param[0] === '/admin') {
         if (param[1] in byName) {
             if (clients[byName[param[1]].zone][param[1]].record.admin == false) {
@@ -452,6 +473,23 @@ function serverCommand(param) {
     }
     if(param[0] === '/clear')
         process.stdout.write('\033c');
+    if (param[0] === '/kick') {
+        if (param[1] in byName) {
+            clients[byName[param[1]].zone][param[1]].record.save();
+            io.to(byName[param[1]].socketID).emit('stopGame', '');
+            clientRemovalIO(io, byName[param[1]].socketID);
+            console.log(param[1] + ' has been kicked');
+        }
+    }
+    if (param[0] === '/help') {
+        process.stdout.write('\033c');
+        console.log(
+            '/kick {username}    - kick a player\n' +
+            '/admin {username}   - promote someone to be an administrator\n' +
+            '/clear              - clear console\n' +
+            '/exit               - stop server'
+        );
+    }
 }
 
 module.exports = {
@@ -460,7 +498,7 @@ module.exports = {
     openNameRequest: openNameRequest,
     playerListRequest: playerListRequest,
     newClient: newClient,
-    clientRemoval: clientRemoval,
+    clientRemovalIO: clientRemovalIO,
     zoneRequest: zoneRequest,
     directionUpdate: directionUpdate,
     positionUpdate: positionUpdate,
