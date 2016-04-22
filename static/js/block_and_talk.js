@@ -19,13 +19,18 @@ var socketFunctions = {
     stopGame: function() {},
     startSnake: function() {},
     snakeUpdate: function() {},
-    stopSnake: function() {}
+    stopSnake: function() {},
+    startRPS: function() {},
+    rpsResult: function() {}
 };
 var direction = {
     left  : false,
     right : false,
     up    : false,
     down  : false
+};
+var minigameStuff = {
+    rpsSelected: null
 };
 
 window.onload = function() {
@@ -85,6 +90,18 @@ function startSnake(scoreList) {
 function stopSnake() {
     startGame();
     unpauseChatBox();
+}
+
+function startRPS() {
+    stopGame();
+    pauseChatBox();
+    drawRPS();
+    document.addEventListener('click', rpsHandler);
+}
+
+function stopRPS() {
+    document.removeEventListener('click', rpsHandler);
+    document.addEventListener('click', rpsResultHandler);
 }
 
 function startChatBox() {
@@ -526,14 +543,14 @@ function snakeDraw(msg) {
     ctx.fillStyle = 'blue';
     ctx.fill();
     ctx.closePath();
-    
+
     ctx.clearRect(canvas.height, canvas.height - 50, canvas.width - canvas.height - 20, 30);
     ctx.beginPath();
     ctx.rect(canvas.height, canvas.height - 50, canvas.width - canvas.height - 20, 30);
     ctx.fillStyle = 'blue';
     ctx.fill();
     ctx.closePath();
-    
+
     ctx.font = '20px Helvetica';
     ctx.textAlign = 'left';
     ctx.fillStyle = 'black';
@@ -546,13 +563,68 @@ function snakeScoreDraw(scores) {
     ctx.fillStyle = 'blue';
     ctx.fill();
     ctx.closePath();
-    
+
     for (var i = 0; i < scores.length; i++) {
         ctx.font = '20px Helvetica';
         ctx.textAlign = 'left';
         ctx.fillStyle = 'black';
         ctx.fillText(scores[i].score + ' ' + scores[i].username, canvas.height + 20, 50 + (22 * i));
     }
+}
+
+function drawRPSResult(msg) {
+    ctx.fillStyle = 'black';
+    ctx.font = '40px Helvetica';
+    ctx.fillText('YOU ' + msg + '!', canvas.width / 2, 300);
+
+    ctx.beginPath();
+    ctx.rect(canvas.width / 2 - 50, 350, 100, 30);
+    ctx.fillStyle = 'green';
+    ctx.fill();
+    ctx.closePath();
+
+    ctx.fillStyle = 'black';
+    ctx.font = '20px Helvetica';
+    ctx.fillText('ESCAPE', canvas.width / 2, 372);
+}
+
+function drawRPS() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = '30px helvetica';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'black';
+    ctx.fillText('ROCK, PAPER, SCISSORS', canvas.width / 2, 40);
+
+    ctx.font = '20px Helvetica';
+    ctx.fillStyle = 'blue';
+    if (minigameStuff.rpsSelected === 'Rock') {
+        ctx.beginPath();
+        ctx.rect(canvas.width / 2 - 100, 92.5, 200, 30);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.fillStyle = 'blue';
+    ctx.fillText('Rock', canvas.width / 2, 115);
+    if (minigameStuff.rpsSelected === 'Paper') {
+        ctx.beginPath();
+        ctx.rect(canvas.width / 2 - 100, 142.5, 200, 30);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.fillStyle = 'blue';
+    ctx.fillText('Paper', canvas.width / 2, 165);
+    if (minigameStuff.rpsSelected === 'Scissors') {
+        ctx.beginPath();
+        ctx.rect(canvas.width / 2 - 100, 192.5, 200, 30);
+        ctx.fillStyle = 'red';
+        ctx.fill();
+        ctx.closePath();
+    }
+    ctx.fillStyle = 'blue';
+    ctx.fillText('Scissors', canvas.width / 2, 215.5);
 }
 
 function typingMessage() {
@@ -717,6 +789,35 @@ function snakeHandler(evt) {
         socket.emit('snakeUpdate', direction);
 }
 
+function rpsHandler(evt) {
+    var relativeX = evt.clientX - canvas.offsetLeft;
+    var relativeY = evt.clientY - canvas.offsetTop;
+    if (relativeX > canvas.width / 2 - 200 && relativeX < canvas.width / 2 + 200) {
+        if (relativeY >= 92.5 && relativeY <= 122.5)
+            minigameStuff.rpsSelected = 'Rock';
+        else if (relativeY >= 142.5 && relativeY <= 172.5)
+            minigameStuff.rpsSelected = 'Paper';
+        else if (relativeY >= 192.5 && relativeY <= 222.5)
+            minigameStuff.rpsSelected = 'Scissors';
+    }
+    if (minigameStuff.rpsSelected) {
+        drawRPS();
+        socket.emit('rpsUpdate', minigameStuff.rpsSelected);
+    }
+}
+
+function rpsResultHandler(evt) {
+    var relativeX = evt.clientX - canvas.offsetLeft;
+    var relativeY = evt.clientY - canvas.offsetTop;
+    if (relativeX >= canvas.width / 2 - 50 && relativeX <= canvas.width / 2 + 50 &&
+        relativeY >= 350 && relativeY <= 380) {
+        document.removeEventListener('click', rpsResultHandler, false);
+        startGame();
+        unpauseChatBox();
+        unpauseGameFunctions();
+    }
+}
+
 // INIT SOCKET
 function initSockets() {
     socket = io();
@@ -736,6 +837,8 @@ function initSockets() {
     socket.on('startSnake', function(msg) {socketFunctions.startSnake(msg);});
     socket.on('snakeUpdate', function(msg) {socketFunctions.snakeUpdate(msg);});
     socket.on('stopSnake', function(msg) {socketFunctions.stopSnake();});
+    socket.on('startRPS', function(msg) {socketFunctions.startRPS();});
+    socket.on('rpsResult', function(msg) {socketFunctions.rpsResult(msg);});
     socket.on('disconnect', function(msg) {alert('lost connection to server');});
 }
 
@@ -754,7 +857,7 @@ function startLoginFunctions() {
             alert(msg);
     };
     socketFunctions.registerResponse = function(msg) {
-        if (msg) {
+        if (msg === true) {
             stopMenu();
             stopLoginFunctions();
             stopCreationMenu();
@@ -762,6 +865,8 @@ function startLoginFunctions() {
             startGame();
             startChatBox();
         }
+        else
+            alert(msg);
     };
     socketFunctions.openNameResponse = function(msg) {
         if (msg){
@@ -860,26 +965,42 @@ function startGameFunctions() {
         startSnakeFunctions();
         startSnake(msg);
     }
+    socketFunctions.startRPS = function() {
+        minigameStuff.rpsSelected = null;
+        pauseGameFunctions();
+        startRPS();
+        startRPSFunctions();
+    }
+}
+
+function startRPSFunctions() {
+    socketFunctions.rpsResult = function(result) {
+        stopRPS();
+        drawRPSResult(result);
+    }
 }
 
 function stopGameFunctions() {
-    socketFunctions.globalAddition = function(msg) {};
-    socketFunctions.playerListResponse = function(msg) {};
-    socketFunctions.zoneAddition = function(msg) {};
-    socketFunctions.friendAddition = function(msg) {};
-    socketFunctions.playerRemoval = function(msg) {}
-    socketFunctions.zoneUpdate = function(msg) {};
-    socketFunctions.currentZone = function(msg) {};
-    socketFunctions.newMessage = function(msg) {};
-    socketFunctions.newPM = function(msg) {};
+    socketFunctions.globalAddition = function() {};
+    socketFunctions.playerListResponse = function() {};
+    socketFunctions.zoneAddition = function() {};
+    socketFunctions.friendAddition = function() {};
+    socketFunctions.playerRemoval = function() {}
+    socketFunctions.zoneUpdate = function() {};
+    socketFunctions.currentZone = function() {};
+    socketFunctions.newMessage = function() {};
+    socketFunctions.newPM = function() {};
     socketFunctions.stopGame = function() {};
+    socketFunctions.startSnake = function() {};
+    socketFunctions.startRPS = function() {};
 }
 
 function pauseGameFunctions() {
-    socketFunctions.playerListResponse = function(msg) {};
-    socketFunctions.zoneAddition = function(msg) {};
-    socketFunctions.startSnake = function(msg) {};
-    socketFunctions.zoneUpdate = function(msg) {};
+    socketFunctions.playerListResponse = function() {};
+    socketFunctions.zoneAddition = function() {};
+    socketFunctions.startSnake = function() {};
+    socketFunctions.zoneUpdate = function() {};
+    socketFunctions.startRPS = function() {};
 }
 
 function startSnakeFunctions() {
@@ -917,5 +1038,14 @@ function unpauseGameFunctions() {
         pauseGameFunctions();
         startSnakeFunctions();
         startSnake(msg);
+    }
+    socketFunctions.startRPS = function() {
+        minigameStuff.rpsSelected = null;
+        pauseGameFunctions();
+        startRPS();
+        socketFunctions.rpsResult = function(msg) {
+            stopRPS();
+            drawRPSResult(msg);
+        }
     }
 }

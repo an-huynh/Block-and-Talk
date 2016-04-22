@@ -3,6 +3,7 @@ var user = require(__dirname + '/models/user.js');
 var friend = require(__dirname + '/models/friend.js');
 var banned = require(__dirname + '/models/ban.js');
 var snakeGame = require(__dirname + '/minigames/snake.js');
+var rpsGame = require(__dirname + '/minigames/rps.js');
 var objectAssign = require('object-assign');
 
 database.sync();
@@ -37,10 +38,6 @@ function loginRequest(socket, msg) {
             socket.emit('loginResponse', true);
             console.log(player.username + ' has logged in.');
         }
-        else if (player.username in byName)
-            socket.emit('loginResponse', 'User already logged in');
-        else if (player.banned)
-            socket.emit('loginResponse', 'User is banned');
         else
             socket.emit('ERROR');
     });
@@ -83,14 +80,14 @@ function registerRequest(socket, msg) {
                             console.log(newPlayer.username + ' has registered and logged in.');
                         });
                     else
-                        socket.emit('registerResponse', false);
+                        socket.emit('registerResponse', 'Player with that Name already exists');
                 });
             else
-                socket.emit('registerResponse', false);
+                socket.emit('registerResponse', 'Name is Banned');
         });
     }
     else
-        socket.emit('registerResponse', false);
+        socket.emit('registerResponse', 'Invalid Username');
 }
 
 function openNameRequest(socket, msg) {
@@ -151,6 +148,7 @@ function clientRemovalIO(io, socketID) {
     if (socketID in bySocket) {
         io.emit('playerRemoval', bySocket[socketID].name);
         snakeGame.stopSnakeGame(bySocket[socketID].name, io, socketID);
+        rpsGame.rpsRemove(bySocket[socketID].name, io);
         delete clients[bySocket[socketID].zone][bySocket[socketID].name];
         delete byName[bySocket[socketID].name];
         delete bySocket[socketID];
@@ -161,6 +159,7 @@ function clientRemovalSocket(socket, socketID) {
     if (socketID in bySocket) {
         socket.broadcast.emit('playerRemoval', bySocket[socketID].name);
         socket.emit('playerRemoval', bySocket[socketID].name);
+        rpsGame.rpsRemove(name, socket);
         snakeGame.stopSnakeGame(bySocket[socketID].name, socket, socketID);
         delete clients[bySocket[socketID].zone][bySocket[socketID].name];
         delete byName[bySocket[socketID].name];
@@ -530,8 +529,11 @@ function commandAttempt(username, param, socket) {
             }
         });
     }
-    if (param[0] === '/snake' && param.length === 1) {
+    if (param[0] === '/snake' && param.length === 1)
         snakeGame.startSnakeGame(username, socket);
+    if (param[0] === '/rps' && param.length === 2) {
+        if (param[1] !== username && param[1] in byName)
+            rpsGame.rpsChallenge(username, param[1], socket, byName[param[1]].socketID);
     }
 }
 
@@ -643,6 +645,10 @@ function updateSnake(socket, msg) {
     snakeGame.snakeUpdate(bySocket[socket.id].name, msg, socket);
 }
 
+function updateRPS(socket, msg) {
+    rpsGame.rpsUpdate(bySocket[socket.id].name, socket, msg);
+}
+
 module.exports = {
     loginRequest: loginRequest,
     registerRequest: registerRequest,
@@ -658,4 +664,5 @@ module.exports = {
     sendPM: sendPM,
     serverCommand: serverCommand,
     updateSnake: updateSnake,
+    updateRPS: updateRPS
 };

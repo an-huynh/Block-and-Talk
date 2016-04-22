@@ -20,9 +20,9 @@
   },
   "dependencies": {
     "express": "~4.13.4",
+    "object-assign": "~4.0.1",
     "sequelize": "~3.20.0",
-    "sqlite3": "~3.1.2",
     "socket.io": "~1.4.5",
-    "object-assign": "~4.0.1"
+    "sqlite3": "^3.1.3"
   }
 }
