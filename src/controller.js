@@ -159,7 +159,7 @@ function clientRemovalSocket(socket, socketID) {
     if (socketID in bySocket) {
         socket.broadcast.emit('playerRemoval', bySocket[socketID].name);
         socket.emit('playerRemoval', bySocket[socketID].name);
-        rpsGame.rpsRemove(name, socket);
+        rpsGame.rpsRemove(bySocket[socketID].name, socket);
         snakeGame.stopSnakeGame(bySocket[socketID].name, socket, socketID);
         delete clients[bySocket[socketID].zone][bySocket[socketID].name];
         delete byName[bySocket[socketID].name];
@@ -533,7 +533,7 @@ function commandAttempt(username, param, socket) {
         snakeGame.startSnakeGame(username, socket);
     if (param[0] === '/rps' && param.length === 2) {
         if (param[1] !== username && param[1] in byName)
-            rpsGame.rpsChallenge(username, param[1], socket, byName[param[1]].socketID);
+            rpsGame.rpsChallenge(username, param[1], socket);
     }
 }
 
@@ -627,18 +627,24 @@ function serverCommand(io, param) {
             }
         });
     }
-    if (param[0] === '/help') {
-        process.stdout.write('\033c');
-        console.log(
-            '/kick {username}    - kick a player\n' +
-            '/op {username}      - grant someone administrative power\n' +
-            '/deop {username}    - revoke someones administrative power\n' +
-            '/ban {username}     - ban a player or username\n' +
-            '/unban {username}   - unban a player or username\n' +
-            '/clear              - clear console\n' +
-            '/exit               - stop server\n'
-        );
+    if (param[0] === '/stop') {
+        console.log('Stopping Server...');
+        console.log("Goodbye :'\(");
+        process.exit();
     }
+    else
+        if (param[0] === '/help') {
+            process.stdout.write('\033c');
+            console.log(
+                '/kick [username]    - kick a player\n' +
+                '/op [username]      - grant someone administrative power\n' +
+                '/deop [username]    - revoke someones administrative power\n' +
+                '/ban [username]     - ban a player or username\n' +
+                '/unban [username]   - unban a player or username\n' +
+                '/clear              - clear console\n' +
+                '/stop               - stop server\n'
+            );
+        }
 }
 
 function updateSnake(socket, msg) {

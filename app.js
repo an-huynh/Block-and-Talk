@@ -22,16 +22,16 @@ io.on('connection', function(socket) {
     socket.on('openNameRequest', function(msg) {
         controller.openNameRequest(socket, msg);
     });
-    socket.on('playerListRequest', function(msg) {
+    socket.on('playerListRequest', function() {
         controller.playerListRequest(socket);
     })
     socket.on('directionUpdate', function(msg) {
         controller.directionUpdate(socket, msg);
     });
-    socket.on('zoneRequest', function(msg) {
+    socket.on('zoneRequest', function() {
         controller.zoneRequest(socket);
     });
-    socket.on('currentZoneRequest', function(msg) {
+    socket.on('currentZoneRequest', function() {
         controller.currentZone(socket);
     });
     socket.on('messagePost', function(msg) {
@@ -60,13 +60,7 @@ http.listen(3000, function() {
 
 process.stdin.setEncoding('utf-8');
 process.stdin.on('data', function(msg) {
-    if (msg.trim() === '/exit') {
-        console.log('Stopping Server...');
-        console.log('Goodbye :D');
-        process.exit();
-    }
-    else
-        controller.serverCommand(io, msg.trim().split(' '));
+    controller.serverCommand(io, msg.trim().split(' '));
 });
 
 process.on('SIGINT', function() {

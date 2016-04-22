@@ -68,11 +68,11 @@ function stopCreationMenu() {
 }
 
 function startGame() {
-    socket.emit('currentZoneRequest', '');
+    socket.emit('currentZoneRequest');
     window.onkeydown = gameKeyDown;
     window.onkeyup = gameKeyUp;
-    socket.emit('zoneRequest', '');
-    socket.emit('playerListRequest', '');
+    socket.emit('zoneRequest');
+    socket.emit('playerListRequest');
 }
 
 function stopGame() {
