@@ -467,7 +467,7 @@ function commandAttempt(username, param, socket) {
                                 }}).then(function(mutual) {
                                     if (mutual) {
                                         socket.broadcast.to(byName[mutual.username].socketID).emit('friendAddition', mutual.friend);
-                                        socket.emit('friendAddition', friend.username);
+                                        socket.emit('friendAddition', mutual.username);
                                     }
                                 });
                             });
@@ -565,7 +565,7 @@ function commandAttempt(username, param, socket) {
         snakeGame.startSnakeGame(username, socket);
     if (param[0] === '/rps' && param.length === 2) {
         if (param[1] !== username && param[1] in byName)
-            rpsGame.rpsChallenge(username, param[1], socket);
+            rpsGame.rpsChallenge(username, param[1], socket, byName[param[1]].socketID);
     }
 }
 

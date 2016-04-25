@@ -1,7 +1,7 @@
 var rpsPlayer = {};
 var rpsChoice = {};
 
-function rpsChallenge(name, targetName, socket) {
+function rpsChallenge(name, targetName, socket, targetID) {
     rpsPlayer[name] = {};
     rpsPlayer[name].target = targetName;
     rpsPlayer[name].id = socket.id;
