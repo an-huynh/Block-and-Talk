@@ -10,7 +10,10 @@ database.sync();
 
 var clients = {
     '0_0': {},
-    '0_1': {}
+    '0_1': {},
+    '0_-1': {},
+    '0_-2': {},
+    '1_0': {}
 };
 var bySocket = {};
 var byName = {};
