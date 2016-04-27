@@ -113,6 +113,7 @@ form {
     word-wrap: break-word;
     width: 85%;
     float: right;
+    white-space: pre-wrap;
 }
 
 #chat-box-dropdown {

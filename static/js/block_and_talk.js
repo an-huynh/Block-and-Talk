@@ -132,6 +132,7 @@ function pauseChatBox() {
     elt('chat-box').style.display = 'none';
     elt('message-form').style.display = 'none';
     elt('playerlist-box').style.display = 'none';
+    elt('chat-and-player-box').style.display = 'none';
 
     elt('message-input').onfocus = null;
     elt('message-input').onblur = null;
@@ -153,6 +154,7 @@ function stopChatBox() {
     elt('chat-box').style.display = 'none';
     elt('message-form').style.display = 'none';
     elt('playerlist-box').style.display = 'none';
+    elt('chat-and-player-box').style.display = 'none';
 
     var dropDown = elt('chat-box-dropdown');
     while (dropDown.lastChild) {
