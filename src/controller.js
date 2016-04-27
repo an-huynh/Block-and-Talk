@@ -578,8 +578,8 @@ function commandAttempt(username, param, socket) {
     if (param[0] === '/help') {
         socket.emit('newMessage', {
                     username: 'Server',
-                    message: '/rps [opponent]       - Sends/Accepts a challenge to/from the opponent\n' +
-                             '/snake                     - Activates a game of snake\n' +
+                    message: '/rps [username]       - Sends/Accepts a challenge to/from username\n' +
+                             '/snake                    - Activates a game of snake\n' +
                              '/friend [username]   - Adds username to your friends list\n'
                 });
     }
