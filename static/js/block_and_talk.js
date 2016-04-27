@@ -118,6 +118,7 @@ function startChatBox() {
     elt('chat-box').style.display = 'block';
     elt('message-form').style.display = 'block';
     elt('playerlist-box').style.display = 'block';
+    elt('chat-and-player-box').style.display = 'block';
     socket.emit('playerListRequest', '');
 
     elt('message-input').onfocus = typingMessage;
@@ -141,6 +142,7 @@ function unpauseChatBox() {
     elt('chat-box').style.display = 'block';
     elt('message-form').style.display = 'block';
     elt('playerlist-box').style.display = 'block';
+    elt('chat-and-player-box').style.display = 'block';
 
     elt('message-input').onfocus = typingMessage;
     elt('message-input').onblur = notTypingMessage;
@@ -931,7 +933,7 @@ function startGameFunctions() {
     socketFunctions.newMessage = function(msg) {
         var newMessage = elt('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg.username;
-        newMessage.querySelector('.message-content').textContent = msg.message;
+        newMessage.querySelector('.message-content').innerText = msg.message;
         elt('global-chat-messages').appendChild(newMessage);
         elt('chat-box').scrollTop = elt('chat-box').scrollHeight;
         if (!messages[msg.username])
