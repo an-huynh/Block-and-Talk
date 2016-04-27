@@ -931,7 +931,7 @@ function startGameFunctions() {
     socketFunctions.newMessage = function(msg) {
         var newMessage = elt('message-template').content.cloneNode(true);
         newMessage.querySelector('.message-username').textContent = msg.username;
-        newMessage.querySelector('.message-content').textContent = msg.message;
+        newMessage.querySelector('.message-content').innerText = msg.message;
         elt('global-chat-messages').appendChild(newMessage);
         elt('chat-box').scrollTop = elt('chat-box').scrollHeight;
         if (!messages[msg.username])

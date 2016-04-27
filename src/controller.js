@@ -572,6 +572,13 @@ function commandAttempt(username, param, socket) {
         if (param[1] !== username && param[1] in byName)
             rpsGame.rpsChallenge(username, param[1], socket, byName[param[1]].socketID);
     }
+    if (param[0] === '/help')
+        socket.emit('newMessage', {
+            username: 'Server',
+            message: '/rps [username] - to challenge someone\n' +
+                     '/friend [username] - to friend someone\n' +
+                     '/snake - to activate snake game'
+        });
 }
 
 function serverCommand(io, param) {
