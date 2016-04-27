@@ -41,16 +41,18 @@
                     <tr><td></td><td><input type='submit' value='submit'></td></tr>
                 </table>
             </form>
-        <select name='chat-box-session' id='chat-box-dropdown'></select>
-        <div id='chat-box'></div>
-        <div id='playerlist-box'>
-            <strong>Online</strong>
-            <ul id='global-chat-players' class='chat-players'></ul>
+        <div id='chat-and-player-box'>    
+            <select name='chat-box-session' id='chat-box-dropdown'></select>
+            <div id='chat-box'></div>
+            <div id='playerlist-box'>
+                <strong> Online</strong>
+                <ul id='global-chat-players' class='chat-players'></ul>
+            </div>
+            <form id='message-form'>
+                <input type='test' id='message-input' autocomplete='off'>
+                <button id='message-send'>SEND</button>
+            </form>
         </div>
-        <form id='message-form'>
-            <input type='test' id='message-input' autocomplete='off'>
-            <button id='message-send'>SEND</button>
-        </form>
     </div>
 </body>
 <template id='message-template'>

@@ -118,6 +118,7 @@ function startChatBox() {
     elt('chat-box').style.display = 'block';
     elt('message-form').style.display = 'block';
     elt('playerlist-box').style.display = 'block';
+    elt('chat-and-player-box').style.display = 'block';
     socket.emit('playerListRequest', '');
 
     elt('message-input').onfocus = typingMessage;
@@ -141,6 +142,7 @@ function unpauseChatBox() {
     elt('chat-box').style.display = 'block';
     elt('message-form').style.display = 'block';
     elt('playerlist-box').style.display = 'block';
+    elt('chat-and-player-box').style.display = 'block';
 
     elt('message-input').onfocus = typingMessage;
     elt('message-input').onblur = notTypingMessage;

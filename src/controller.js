@@ -11,9 +11,12 @@ database.sync();
 var clients = {
     '0_0': {},
     '0_1': {},
+    '0_2': {},
     '0_-1': {},
     '0_-2': {},
-    '1_0': {}
+    '0_-3': {},
+    '1_0': {},
+    '-1_0': {}
 };
 var bySocket = {};
 var byName = {};
@@ -572,13 +575,14 @@ function commandAttempt(username, param, socket) {
         if (param[1] !== username && param[1] in byName)
             rpsGame.rpsChallenge(username, param[1], socket, byName[param[1]].socketID);
     }
-    if (param[0] === '/help')
+    if (param[0] === '/help') {
         socket.emit('newMessage', {
-            username: 'Server',
-            message: '/rps [username] - to challenge someone\n' +
-                     '/friend [username] - to friend someone\n' +
-                     '/snake - to activate snake game'
-        });
+                    username: 'Server',
+                    message: '/rps <opponent>\nSends/Accepts a challenge to/from the opponent\n' +
+                             '/snake\nActivates a game of snake\n' +
+                             '/friend <username>\nAdds username to your friends list\n'
+                });
+    }
 }
 
 function serverCommand(io, param) {

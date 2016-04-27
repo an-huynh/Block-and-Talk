@@ -7,10 +7,17 @@ body {
 
 header {
     font-family: lemon_milk;
-    height: 70px;
-    line-height: 70px;
+    height: 85px;
+    line-height: 85px;
     text-align: center;
     color: #FFFFFF;
+    text-shadow:   1px 0px #ccc, 0px 1px #aaa,
+                   2px 1px #ccc, 1px 2px #aaa,
+                   3px 2px #ccc, 2px 3px #aaa,
+                   4px 3px #ccc, 3px 4px #aaa,
+                   5px 4px #ccc, 4px 5px #aaa,
+                   6px 5px #ccc, 5px 6px #aaa,
+                   6px 6px #ccc;
     font-size: 60px;
     background-color: #7b8b8b;
 }
@@ -36,7 +43,7 @@ form {
     position: relative;
     float: right;
     width: 20%;
-    height: 260px;
+    height: 261px;
     font-size: 13px;
     font-family: helvetica;
     background-color: #7f92a7;
@@ -124,4 +131,12 @@ form {
 @font-face {
     font-family: lemon_milk;
     src: url('LemonMilk.otf');
+}
+
+#chat-and-player-box {
+    display: none;
+    height: 261px;
+    -webkit-box-shadow: 0 8px 6px -6px black;
+	-moz-box-shadow: 0 8px 6px -6px black;
+	box-shadow: 0 8px 6px -6px black;
 }
