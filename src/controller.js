@@ -149,6 +149,7 @@ function friendAddition(socket) {
 
 function clientRemovalIO(io, socketID) {
     if (socketID in bySocket) {
+        clients[bySocket[socketID].zone][bySocket[socketID].name].record.save();
         io.emit('playerRemoval', bySocket[socketID].name);
         snakeGame.stopSnakeGame(bySocket[socketID].name, io, socketID);
         rpsGame.rpsRemove(bySocket[socketID].name, io);
@@ -160,6 +161,7 @@ function clientRemovalIO(io, socketID) {
 
 function clientRemovalSocket(socket, socketID) {
     if (socketID in bySocket) {
+        clients[bySocket[socketID].zone][bySocket[socketID].name].record.save();
         socket.broadcast.emit('playerRemoval', bySocket[socketID].name);
         socket.emit('playerRemoval', bySocket[socketID].name);
         rpsGame.rpsRemove(bySocket[socketID].name, socket);

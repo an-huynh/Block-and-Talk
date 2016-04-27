@@ -32,6 +32,7 @@ var direction = {
 var minigameStuff = {
     rpsSelected: null
 };
+var currentZone;
 
 window.onload = function() {
     canvas = elt('myCanvas');
@@ -309,6 +310,9 @@ function drawGame() {
             ctx.font = '20px Helvetica';
             ctx.textAlign = 'center';
             ctx.fillStyle = messages[key].color;
+            console.log(currentZone);
+            if (currentZone === '0_-2')
+              ctx.fillStyle = 'white';
             ctx.fillText(messages[key].message, players[key].posX + 10, players[key].posY - 10, 200);
         }
     }
@@ -921,6 +925,7 @@ function startGameFunctions() {
         drawGame();
     };
     socketFunctions.currentZone = function(msg) {
+        currentZone = msg;
         elt('myCanvas').style.backgroundImage = "url(/img/" + msg + ".png)";
     }
     socketFunctions.newMessage = function(msg) {
@@ -934,7 +939,7 @@ function startGameFunctions() {
         messages[msg.username].message = msg.message;
         messages[msg.username].time = Date.now();
         messages[msg.username].color = 'black';
-        drawGame();
+        //drawGame();
     }
     socketFunctions.newPM = function(msg) {
         var newMessage = elt('message-template').content.cloneNode(true);
@@ -950,7 +955,7 @@ function startGameFunctions() {
         messages[msg.source].message = msg.message;
         messages[msg.source].time = Date.now();
         messages[msg.source].color = 'red';
-        drawGame();
+        //drawGame();
     }
     socketFunctions.stopGame = function() {
         stopGameFunctions();
