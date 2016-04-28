@@ -359,7 +359,7 @@ function drawGame() {
             ctx.textAlign = 'center';
             ctx.fillStyle = messages[key].color;
             console.log(currentZone);
-            if (currentZone === '0_-2')
+            if (currentZone === '0_-2' || currentZone === '1_-1')
               ctx.fillStyle = 'white';
             ctx.fillText(messages[key].message, players[key].posX + 10, players[key].posY - 10, 200);
         }
@@ -867,6 +867,8 @@ function rpsResultHandler(evt) {
         startGame();
         unpauseChatBox();
         unpauseGameFunctions();
+        if(currentZone === '2_0')
+            system.clock = setInterval(drawSolarSystem, 1000 / 60);
     }
 }
 
@@ -1014,6 +1016,8 @@ function startGameFunctions() {
         //drawGame();
     }
     socketFunctions.stopGame = function() {
+        currentDraw = drawGame;
+        clearInterval(system.clock);
         stopGameFunctions();
         stopGame();
         stopChatBox();
@@ -1022,6 +1026,9 @@ function startGameFunctions() {
         startMenu();
     }
     socketFunctions.startSnake = function(msg) {
+        if (system.clock) {
+            clearInterval(system.clock);
+        }
         pauseGameFunctions();
         startSnakeFunctions();
         startSnake(msg);
@@ -1035,6 +1042,9 @@ function startGameFunctions() {
 }
 
 function startRPSFunctions() {
+    if (system.clock) {
+            clearInterval(system.clock);
+    }
     socketFunctions.rpsResult = function(result) {
         stopRPS();
         drawRPSResult(result);
@@ -1078,6 +1088,8 @@ function startSnakeFunctions() {
 }
 
 function stopSnakeFunctions() {
+    if (currentZone === '2_0')
+        system.clock = setInterval(drawSolarSystem, 1000 / 60);
     socketFunctions.snakeUpdate = function() {};
     socketFunctions.stopSnake = function() {};
 }
