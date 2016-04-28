@@ -33,6 +33,13 @@ var minigameStuff = {
     rpsSelected: null
 };
 var currentZone;
+var system = {
+    sun: new Image(),
+    moon: new Image(),
+    earth: new Image(),
+    clock: null,
+};
+var currentDraw = drawGame;
 
 window.onload = function() {
     canvas = elt('myCanvas');
@@ -40,6 +47,9 @@ window.onload = function() {
     initSockets();
     startLoginFunctions();
     startMenu();
+    system.sun.src = 'https://mdn.mozillademos.org/files/1456/Canvas_sun.png';
+    system.moon.src = 'https://mdn.mozillademos.org/files/1443/Canvas_moon.png';
+    system.earth.src = 'https://mdn.mozillademos.org/files/1429/Canvas_earth.png';
 }
 
 function elt(id) {
@@ -266,8 +276,42 @@ function registerRequest() {
     return false;
 }
 
-function drawGame() {
+function drawSolarSystem() {
+    ctx.globalCompositeOperation = 'destination-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+    ctx.strokeStyle = 'rgba(0, 153, 255, 0.4)';
+    ctx.save();
+    ctx.translate(360, 240);
+
+    var time = new Date();
+    ctx.rotate( ((2*Math.PI)/60)*time.getSeconds() + ((2*Math.PI)/60000)*time.getMilliseconds() );
+    ctx.translate(105,0);
+    ctx.fillRect(0,-12,50,24); // Shadow
+    ctx.drawImage(system.earth,-12,-12);
+
+    ctx.save();
+    ctx.rotate( ((2*Math.PI)/6)*time.getSeconds() + ((2*Math.PI)/6000)*time.getMilliseconds() );
+    ctx.translate(0,28.5);
+    ctx.drawImage(system.moon,-3.5,-3.5);
+    ctx.restore();
+
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.arc(360,240,105,0,Math.PI*2,false); // Earth orbit
+    ctx.stroke();
+
+    ctx.drawImage(system.sun,210,90,300,300);
+
+    drawGame();
+}
+
+function drawGame() {
+    if (currentZone != '2_0')
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.globalCompositeOperation = 'source-over';
     for (var key in players) {
         ctx.beginPath();
         if (players[key].shape === 'square')
@@ -903,7 +947,7 @@ function startGameFunctions() {
     };
     socketFunctions.zoneAddition = function(msg) {
         players[msg.username] = msg;
-        drawGame();
+        currentDraw();
     };
     socketFunctions.friendAddition = function(msg) {
         addFriend(msg);
@@ -922,13 +966,21 @@ function startGameFunctions() {
     }
     socketFunctions.zoneAddition = function(msg) {
         players[msg.username] = msg;
-        drawGame();
+        currentDraw();
     };
     socketFunctions.zoneUpdate = function(msg) {
         players = msg;
-        drawGame();
+        currentDraw();
     };
     socketFunctions.currentZone = function(msg) {
+        if (currentZone === '2_0') {
+            clearInterval(system.clock);
+            currentDraw = drawGame;
+        }
+        if (msg === '2_0') {
+            system.clock = setInterval(drawSolarSystem, 1000 / 60);
+            currentDraw = drawSolarSystem;
+        }
         currentZone = msg;
         elt('myCanvas').style.backgroundImage = "url(/img/" + msg + ".png)";
     }
@@ -1037,11 +1089,11 @@ function unpauseGameFunctions() {
     };
     socketFunctions.zoneAddition = function(msg) {
         players[msg.username] = msg;
-        drawGame();
+        currentDraw();
     };
     socketFunctions.zoneUpdate = function(msg) {
         players = msg;
-        drawGame();
+        currentDraw();
     }
     socketFunctions.startSnake = function(msg) {
         pauseGameFunctions();

@@ -16,7 +16,8 @@ var clients = {
     '0_-2': {},
     '0_-3': {},
     '1_0': {},
-    '-1_0': {}
+    '-1_0': {},
+    '2_0': {}
 };
 var bySocket = {};
 var byName = {};
@@ -578,10 +579,18 @@ function commandAttempt(username, param, socket) {
     if (param[0] === '/help') {
         socket.emit('newMessage', {
                     username: 'Server',
-                    message: '/rps [username]       - Sends/Accepts a challenge to/from username\n' +
-                             '/snake                    - Activates a game of snake\n' +
-                             '/friend [username]   - Adds username to your friends list\n'
+                    message: '/rps <opponent>\nSends/Accepts a challenge to/from the opponent\n' +
+                             '/snake\nActivates a game of snake\n' +
+                             '/friend <username>\nAdds username to your friends list\n'
                 });
+    }
+    if (param[0] === '/kick' && clients[byName[username].zone][username].record.admin && param.length === 2) {
+        if (param[1] in byName && param[1] !== username) {
+            clients[byName[param[1]].zone][param[1]].record.save();
+            socket.to(byName[param[1]].socketID).emit('stopGame', '');
+            clientRemovalSocket(socket, byName[param[1]].socketID);
+            console.log(param[1] + ' has been kicked by ' + username);
+        }
     }
 }
 
