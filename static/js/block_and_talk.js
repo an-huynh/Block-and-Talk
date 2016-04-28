@@ -309,7 +309,7 @@ function drawSolarSystem() {
 }
 
 function drawGame() {
-    if (currentZone != '2_0')
+    if (currentZone != '1_-1')
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.globalCompositeOperation = 'source-over';
     for (var key in players) {
@@ -867,7 +867,7 @@ function rpsResultHandler(evt) {
         startGame();
         unpauseChatBox();
         unpauseGameFunctions();
-        if(currentZone === '2_0')
+        if(currentZone === '1_-1')
             system.clock = setInterval(drawSolarSystem, 1000 / 60);
     }
 }
@@ -975,11 +975,11 @@ function startGameFunctions() {
         currentDraw();
     };
     socketFunctions.currentZone = function(msg) {
-        if (currentZone === '2_0') {
+        if (currentZone === '1_-1') {
             clearInterval(system.clock);
             currentDraw = drawGame;
         }
-        if (msg === '2_0') {
+        if (msg === '1_-1') {
             system.clock = setInterval(drawSolarSystem, 1000 / 60);
             currentDraw = drawSolarSystem;
         }
@@ -1088,7 +1088,7 @@ function startSnakeFunctions() {
 }
 
 function stopSnakeFunctions() {
-    if (currentZone === '2_0')
+    if (currentZone === '1_-1')
         system.clock = setInterval(drawSolarSystem, 1000 / 60);
     socketFunctions.snakeUpdate = function() {};
     socketFunctions.stopSnake = function() {};
