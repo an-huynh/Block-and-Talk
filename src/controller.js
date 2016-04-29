@@ -27,6 +27,7 @@ var bySocket = {};
 var byName = {};
 
 bot.add(clients);
+bot.addBoringBots(clients);
 
 function loginRequest(socket, msg) {
     user.findOne({where: {
@@ -46,7 +47,8 @@ function loginRequest(socket, msg) {
             clients[zone][player.username] = {
                 record: player,
                 direction: null,
-                player: true
+                player: true,
+                trapped: false
             };
             newClient(socket);
             socket.emit('loginResponse', true);
@@ -88,7 +90,8 @@ function registerRequest(socket, msg) {
                             clients[zone][newPlayer.username] = {
                                 record: newPlayer,
                                 direction: null,
-                                player: true
+                                player: true,
+                                trapped: false
                             };
                             newClient(socket);
                             socket.emit('registerResponse', true);
@@ -367,17 +370,111 @@ function currentZone(socket) {
 }
 
 function zoneChange(io, zone, name, direction) {
-    var possiblePosition = {
-        x: clients[zone][name].record.posX + direction.x,
-        y: clients[zone][name].record.posY + direction.y
-    };
-    if (possiblePosition.x < 0) {
-        if (possiblePosition.y < 0) {
-            var newZone = clients[zone][name].record.sectionX - 1 + '_' + (clients[zone][name].record.sectionY - 1);
+    if (!clients[zone][name].trapped) {
+        var possiblePosition = {
+            x: clients[zone][name].record.posX + direction.x,
+            y: clients[zone][name].record.posY + direction.y
+        };
+        if (possiblePosition.x < 0) {
+            if (possiblePosition.y < 0) {
+                var newZone = clients[zone][name].record.sectionX - 1 + '_' + (clients[zone][name].record.sectionY - 1);
+                if (newZone in clients) {
+                    clients[zone][name].record.sectionX -= 1;
+                    clients[zone][name].record.sectionY -= 1;
+                    clients[zone][name].record.posX = 700;
+                    clients[zone][name].record.posY = 460;
+                    clients[newZone][name] = objectAssign(clients[zone][name]);
+                    if (clients[zone][name].player) {
+                        io.to(byName[name].socketID).emit('currentZone', newZone);
+                        bySocket[byName[name].socketID].zone = newZone;
+                        byName[name].zone = newZone;
+                    }
+                    delete clients[zone][name];
+                }
+            }
+            else if (possiblePosition.y > 460) {
+                var newZone = clients[zone][name].record.sectionX - 1 + '_' + (clients[zone][name].record.sectionY + 1);
+                if (newZone in clients) {
+                    clients[zone][name].record.sectionX -= 1;
+                    clients[zone][name].record.sectionY += 1;
+                    clients[zone][name].record.posX = 700;
+                    clients[zone][name].record.posY = 0;
+                    clients[newZone][name] = objectAssign(clients[zone][name]);
+                    if (clients[zone][name].player) {
+                        io.to(byName[name].socketID).emit('currentZone', newZone);
+                        bySocket[byName[name].socketID].zone = newZone;
+                        byName[name].zone = newZone;
+                    }
+                    delete clients[zone][name];
+                }
+            }
+            else {
+                var newZone = clients[zone][name].record.sectionX - 1 + '_' + clients[zone][name].record.sectionY;
+                if (newZone in clients) {
+                    clients[zone][name].record.sectionX -= 1;
+                    clients[zone][name].record.posX = 700;
+                    clients[newZone][name] = objectAssign(clients[zone][name]);
+                    if (clients[zone][name].player) {
+                        io.to(byName[name].socketID).emit('currentZone', newZone);
+                        bySocket[byName[name].socketID].zone = newZone;
+                        byName[name].zone = newZone;
+                    }
+                    delete clients[zone][name];
+                }
+            }
+        }
+        else if (possiblePosition.x > 700) {
+            if (possiblePosition.y < 0) {
+                var newZone = clients[zone][name].record.sectionX + 1 + '_' + (clients[zone][name].record.sectionY - 1);
+                if (newZone in clients) {
+                    clients[zone][name].record.sectionX += 1;
+                    clients[zone][name].record.sectionY -= 1;
+                    clients[zone][name].record.posX = 0;
+                    clients[zone][name].record.posY = 460;
+                    clients[newZone][name] = objectAssign(clients[zone][name]);
+                    if (clients[zone][name].player) {
+                        io.to(byName[name].socketID).emit('currentZone', newZone);
+                        bySocket[byName[name].socketID].zone = newZone;
+                        byName[name].zone = newZone;
+                    }
+                    delete clients[zone][name];
+                }
+            }
+            else if (possiblePosition.y > 460) {
+                var newZone = clients[zone][name].record.sectionX + 1 + '_' + (clients[zone][name].record.sectionY + 1);
+                 if (newZone in clients) {
+                     clients[zone][name].record.sectionX += 1;
+                     clients[zone][name].record.sectionY += 1;
+                     clients[zone][name].record.posX = 700;
+                     clients[zone][name].record.posY = 0;
+                     clients[newZone][name] = objectAssign(clients[zone][name]);
+                     if (clients[zone][name].player) {
+                         io.to(byName[name].socketID).emit('currentZone', newZone);
+                         bySocket[byName[name].socketID].zone = newZone;
+                         byName[name].zone = newZone;
+                     }
+                     delete clients[zone][name];
+                }
+            }
+            else {
+                var newZone = clients[zone][name].record.sectionX + 1 + '_' + clients[zone][name].record.sectionY;
+                if (newZone in clients) {
+                    clients[zone][name].record.sectionX += 1;
+                    clients[zone][name].record.posX = 0;
+                    clients[newZone][name] = objectAssign(clients[zone][name]);
+                    if (clients[zone][name].player) {
+                        io.to(byName[name].socketID).emit('currentZone', newZone);
+                        bySocket[byName[name].socketID].zone = newZone;
+                        byName[name].zone = newZone;
+                    }
+                    delete clients[zone][name];
+                }
+            }
+        }
+        else if (possiblePosition.y < 0) {
+            var newZone = clients[zone][name].record.sectionX + '_' + (clients[zone][name].record.sectionY - 1);
             if (newZone in clients) {
-                clients[zone][name].record.sectionX -= 1;
                 clients[zone][name].record.sectionY -= 1;
-                clients[zone][name].record.posX = 700;
                 clients[zone][name].record.posY = 460;
                 clients[newZone][name] = objectAssign(clients[zone][name]);
                 if (clients[zone][name].player) {
@@ -389,11 +486,9 @@ function zoneChange(io, zone, name, direction) {
             }
         }
         else if (possiblePosition.y > 460) {
-            var newZone = clients[zone][name].record.sectionX - 1 + '_' + (clients[zone][name].record.sectionY + 1);
+            var newZone = clients[zone][name].record.sectionX + '_' + (clients[zone][name].record.sectionY + 1);
             if (newZone in clients) {
-                clients[zone][name].record.sectionX -= 1;
                 clients[zone][name].record.sectionY += 1;
-                clients[zone][name].record.posX = 700;
                 clients[zone][name].record.posY = 0;
                 clients[newZone][name] = objectAssign(clients[zone][name]);
                 if (clients[zone][name].player) {
@@ -403,96 +498,6 @@ function zoneChange(io, zone, name, direction) {
                 }
                 delete clients[zone][name];
             }
-        }
-        else {
-            var newZone = clients[zone][name].record.sectionX - 1 + '_' + clients[zone][name].record.sectionY;
-            if (newZone in clients) {
-                clients[zone][name].record.sectionX -= 1;
-                clients[zone][name].record.posX = 700;
-                clients[newZone][name] = objectAssign(clients[zone][name]);
-                if (clients[zone][name].player) {
-                    io.to(byName[name].socketID).emit('currentZone', newZone);
-                    bySocket[byName[name].socketID].zone = newZone;
-                    byName[name].zone = newZone;
-                }
-                delete clients[zone][name];
-            }
-        }
-    }
-    else if (possiblePosition.x > 700) {
-        if (possiblePosition.y < 0) {
-            var newZone = clients[zone][name].record.sectionX + 1 + '_' + (clients[zone][name].record.sectionY - 1);
-            if (newZone in clients) {
-                clients[zone][name].record.sectionX += 1;
-                clients[zone][name].record.sectionY -= 1;
-                clients[zone][name].record.posX = 0;
-                clients[zone][name].record.posY = 460;
-                clients[newZone][name] = objectAssign(clients[zone][name]);
-                if (clients[zone][name].player) {
-                    io.to(byName[name].socketID).emit('currentZone', newZone);
-                    bySocket[byName[name].socketID].zone = newZone;
-                    byName[name].zone = newZone;
-                }
-                delete clients[zone][name];
-            }
-        }
-        else if (possiblePosition.y > 460) {
-            var newZone = clients[zone][name].record.sectionX + 1 + '_' + (clients[zone][name].record.sectionY + 1);
-             if (newZone in clients) {
-                 clients[zone][name].record.sectionX += 1;
-                 clients[zone][name].record.sectionY += 1;
-                 clients[zone][name].record.posX = 700;
-                 clients[zone][name].record.posY = 0;
-                 clients[newZone][name] = objectAssign(clients[zone][name]);
-                 if (clients[zone][name].player) {
-                     io.to(byName[name].socketID).emit('currentZone', newZone);
-                     bySocket[byName[name].socketID].zone = newZone;
-                     byName[name].zone = newZone;
-                 }
-                 delete clients[zone][name];
-            }
-        }
-        else {
-            var newZone = clients[zone][name].record.sectionX + 1 + '_' + clients[zone][name].record.sectionY;
-            if (newZone in clients) {
-                clients[zone][name].record.sectionX += 1;
-                clients[zone][name].record.posX = 0;
-                clients[newZone][name] = objectAssign(clients[zone][name]);
-                if (clients[zone][name].player) {
-                    io.to(byName[name].socketID).emit('currentZone', newZone);
-                    bySocket[byName[name].socketID].zone = newZone;
-                    byName[name].zone = newZone;
-                }
-                delete clients[zone][name];
-            }
-        }
-    }
-    else if (possiblePosition.y < 0) {
-        var newZone = clients[zone][name].record.sectionX + '_' + (clients[zone][name].record.sectionY - 1);
-        if (newZone in clients) {
-            clients[zone][name].record.sectionY -= 1;
-            clients[zone][name].record.posY = 460;
-            clients[newZone][name] = objectAssign(clients[zone][name]);
-            if (clients[zone][name].player) {
-                io.to(byName[name].socketID).emit('currentZone', newZone);
-                bySocket[byName[name].socketID].zone = newZone;
-                byName[name].zone = newZone;
-            }
-            delete clients[zone][name];
-        }
-    }
-    else if (possiblePosition.y > 460) {
-        var newZone = clients[zone][name].record.sectionX + '_' + (clients[zone][name].record.sectionY + 1);
-        if (newZone in clients) {
-            clients[zone][name].record.sectionY += 1;
-            clients[zone][name].record.posY = 0;
-            clients[newZone][name] = objectAssign(clients[zone][name]);
-            if (clients[zone][name].player) {
-                io.to(byName[name].socketID).emit('currentZone', newZone);
-                bySocket[byName[name].socketID].zone = newZone;
-                byName[name].zone = newZone;
-            }
-            delete clients[zone][name];
         }
     }
 }
