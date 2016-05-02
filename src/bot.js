@@ -50,7 +50,6 @@ function addBoringBot(clientList, i) {
     user.findOne({where: {
         username: 'bot' + i
     }}).then(function(entity) {
-        console.log(i);
         if (entity) {
             var zone = entity.sectionX + '_' + entity.sectionY;
             clientList[zone][entity.username] = {};

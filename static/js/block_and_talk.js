@@ -277,6 +277,7 @@ function registerRequest() {
 }
 
 function drawSolarSystem() {
+    console.log('drawing');
     ctx.globalCompositeOperation = 'destination-over';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -867,8 +868,9 @@ function rpsResultHandler(evt) {
         startGame();
         unpauseChatBox();
         unpauseGameFunctions();
-        if(currentZone === '1_-1')
-            system.clock = setInterval(drawSolarSystem, 1000 / 60);
+        if(currentZone === '1_-1') {
+            //system.clock = setInterval(drawSolarSystem, 1000 / 60);
+        }
     }
 }
 
@@ -975,12 +977,12 @@ function startGameFunctions() {
         currentDraw();
     };
     socketFunctions.currentZone = function(msg) {
-        if (currentZone === '1_-1') {
+        if (currentZone === '1_-1' && msg !== '1_-1') {
             clearInterval(system.clock);
             currentDraw = drawGame;
         }
-        if (msg === '1_-1') {
-            system.clock = setInterval(drawSolarSystem, 1000 / 60);
+        if (msg === '1_-1' && currentZone !== '1_-1') {
+            //system.clock = setInterval(drawSolarSystem, 1000 / 60);
             currentDraw = drawSolarSystem;
         }
         currentZone = msg;
@@ -1028,12 +1030,16 @@ function startGameFunctions() {
     socketFunctions.startSnake = function(msg) {
         if (system.clock) {
             clearInterval(system.clock);
+            system.clock = null;
+            console.log('helo');
         }
         pauseGameFunctions();
         startSnakeFunctions();
         startSnake(msg);
     }
     socketFunctions.startRPS = function() {
+        if (system.clock)
+            clearInterval(system.clock);
         minigameStuff.rpsSelected = null;
         pauseGameFunctions();
         startRPS();
@@ -1042,9 +1048,6 @@ function startGameFunctions() {
 }
 
 function startRPSFunctions() {
-    if (system.clock) {
-            clearInterval(system.clock);
-    }
     socketFunctions.rpsResult = function(result) {
         stopRPS();
         drawRPSResult(result);
@@ -1088,8 +1091,6 @@ function startSnakeFunctions() {
 }
 
 function stopSnakeFunctions() {
-    if (currentZone === '1_-1')
-        system.clock = setInterval(drawSolarSystem, 1000 / 60);
     socketFunctions.snakeUpdate = function() {};
     socketFunctions.stopSnake = function() {};
 }
